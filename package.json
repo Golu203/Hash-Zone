@@ -1,7 +1,7 @@
 {
   "name": "shree-meenakshi-textiles-pwa",
   "version": "1.0.0",
-  "description": "Shree Meenakshi Textiles PWA Digital Clothing Catalog",
+  "description": "Shree Meenakshi Textiles PWA Digital Clothing Store",
   "scripts": {
     "build": "bash build.sh"
   },

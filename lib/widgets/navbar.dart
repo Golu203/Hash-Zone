@@ -111,7 +111,7 @@ class _HZNavBarState extends State<HZNavBar> {
                                 ),
                               ),
                               Text(
-                                'DIGITAL CATALOG',
+                                'DIGITAL STORE',
                                 style: GoogleFonts.inter(
                                   fontSize: 9,
                                   fontWeight: FontWeight.w600,
@@ -416,7 +416,7 @@ class HZMobileDrawer extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        'DIGITAL CATALOG',
+                        'DIGITAL STORE',
                         style: GoogleFonts.inter(
                           fontSize: 10,
                           letterSpacing: 1.5,

@@ -36,7 +36,7 @@ class ProductDetailScreen extends StatelessWidget {
   void _shareProduct(BuildContext context, Product product) {
     final currentUrl = Uri.base.toString();
     Share.share(
-      'Check out ${product.title} (SKU: ${product.sku}) on HASH ZONE Digital Catalog:\n$currentUrl',
+      'Check out ${product.title} (SKU: ${product.sku}) on HASH ZONE Digital Store:\n$currentUrl',
       subject: 'HASH ZONE - ${product.title}',
     );
   }

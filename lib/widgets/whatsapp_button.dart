@@ -41,7 +41,7 @@ class WhatsAppInquiryButton extends StatelessWidget {
     final message = '''
 Hello HASH ZONE,
 
-I am interested in inquiring about this item from your catalog:
+I am interested in inquiring about this item from your store:
 
 • Product Name: ${product.title}
 • SKU: ${product.sku}$sizeInfo

@@ -96,7 +96,7 @@ class HZFooter extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        'DIGITAL CLOTHING CATALOG',
+                        'DIGITAL CLOTHING STORE',
                         style: GoogleFonts.inter(
                           fontSize: 11,
                           letterSpacing: 1.0,
@@ -118,7 +118,7 @@ class HZFooter extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'DIGITAL CLOTHING CATALOG',
+                        'DIGITAL CLOTHING STORE',
                         style: GoogleFonts.inter(
                           fontSize: 10,
                           letterSpacing: 0.8,
@@ -170,7 +170,7 @@ class HZFooter extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         Text(
-          'Explore our digital catalog for high-quality menswear, womenswear, and modern apparel. Select your favorite items and inquire directly on WhatsApp.',
+          'Explore our digital store for high-quality menswear, womenswear, and modern apparel. Select your favorite items and inquire directly on WhatsApp.',
           style: GoogleFonts.inter(
             fontSize: 13,
             height: 1.6,
@@ -290,7 +290,7 @@ class HZFooter extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 16),
-        _footerLink(context, 'Home Catalog', '/'),
+        _footerLink(context, 'Home Store', '/'),
         _footerLink(context, 'All Products', '/products'),
         _footerLink(context, 'Special Offers', '/products?offers=true'),
         _footerLink(context, 'About Us', '/about'),
