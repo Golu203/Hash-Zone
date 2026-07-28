@@ -135,6 +135,7 @@ class HZFooter extends StatelessWidget {
 
   Widget _brandColumn(BuildContext context, BusinessProvider business) {
     final social = business.settings.socialLinks;
+    final isDesktop = MediaQuery.of(context).size.width >= 900;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -154,13 +155,15 @@ class HZFooter extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 12),
-            Text(
-              'SHREE MEENAKSHI TEXTILES',
-              style: GoogleFonts.cormorantGaramond(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 2.5,
-                color: Colors.white,
+            Expanded(
+              child: Text(
+                'SHREE MEENAKSHI TEXTILES',
+                style: GoogleFonts.cormorantGaramond(
+                  fontSize: isDesktop ? 24 : 18,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: isDesktop ? 2.5 : 1.5,
+                  color: Colors.white,
+                ),
               ),
             ),
           ],
