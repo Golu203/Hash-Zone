@@ -3,7 +3,7 @@
     "short_name": "hashzone",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#000000",
+    "background_color": "#ffffff",
     "theme_color": "#000000",
     "description": "A new Flutter project.",
     "orientation": "portrait-primary",
