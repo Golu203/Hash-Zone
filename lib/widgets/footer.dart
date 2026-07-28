@@ -316,6 +316,11 @@ class HZFooter extends StatelessWidget {
   }
 
   Widget _contactColumn(BuildContext context, BusinessProvider business) {
+    final mapsUrl = business.settings.googleMapsUrl;
+    final phone = business.settings.contactNumbers.isNotEmpty ? business.settings.contactNumbers.first : '';
+    final waNum = business.settings.whatsAppNumber;
+    final email = business.settings.email;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -329,33 +334,79 @@ class HZFooter extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 16),
-        _contactRow(Icons.location_on_outlined, business.settings.storeAddress),
+        _contactRow(
+          Icons.location_on_outlined,
+          business.settings.storeAddress,
+          onTap: mapsUrl.trim().isNotEmpty ? () => _launchSocial(context, mapsUrl, 'Google Maps') : null,
+        ),
         const SizedBox(height: 10),
-        _contactRow(Icons.phone_outlined, business.settings.contactNumbers.isNotEmpty ? business.settings.contactNumbers.first : ''),
+        _contactRow(
+          Icons.phone_outlined,
+          phone,
+          onTap: phone.trim().isNotEmpty
+              ? () async {
+                  final cleanPhone = phone.replaceAll(RegExp(r'[^\d+]'), '');
+                  final uri = Uri.parse('tel:$cleanPhone');
+                  if (await canLaunchUrl(uri)) {
+                    await launchUrl(uri);
+                  }
+                }
+              : null,
+        ),
         const SizedBox(height: 10),
-        _contactRow(Icons.chat_outlined, 'WhatsApp: ${business.settings.whatsAppNumber}'),
+        _contactRow(
+          Icons.chat_outlined,
+          'WhatsApp: $waNum',
+          onTap: waNum.trim().isNotEmpty
+              ? () {
+                  final cleanWa = waNum.replaceAll(RegExp(r'[^\d+]'), '');
+                  final waUrl = cleanWa.startsWith('+')
+                      ? 'https://wa.me/${cleanWa.substring(1)}'
+                      : 'https://wa.me/$cleanWa';
+                  _launchSocial(context, waUrl, 'WhatsApp');
+                }
+              : null,
+        ),
         const SizedBox(height: 10),
-        _contactRow(Icons.email_outlined, business.settings.email),
+        _contactRow(
+          Icons.email_outlined,
+          email,
+          onTap: email.trim().isNotEmpty
+              ? () async {
+                  final uri = Uri.parse('mailto:$email');
+                  if (await canLaunchUrl(uri)) {
+                    await launchUrl(uri);
+                  }
+                }
+              : null,
+        ),
       ],
     );
   }
 
-  Widget _contactRow(IconData icon, String text) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, size: 16, color: const Color(0xFFCCCCCC)),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Text(
-            text,
-            style: GoogleFonts.inter(
-              fontSize: 13,
-              color: const Color(0xFFCCCCCC),
+  Widget _contactRow(IconData icon, String text, {VoidCallback? onTap}) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(4),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, size: 16, color: const Color(0xFFCCCCCC)),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                text,
+                style: GoogleFonts.inter(
+                  fontSize: 13,
+                  color: const Color(0xFFCCCCCC),
+                ),
+              ),
             ),
-          ),
+          ],
         ),
-      ],
+      ),
     );
   }
 }
