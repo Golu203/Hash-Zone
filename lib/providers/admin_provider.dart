@@ -6,10 +6,12 @@ import '../models/subcategory.dart';
 import '../models/hero_banner.dart';
 import '../services/firestore_service.dart';
 import '../services/image_service.dart';
+import '../services/cloudinary_service.dart';
 
 class AdminProvider extends ChangeNotifier {
   final FirestoreService _firestoreService;
   final ImageService _imageService;
+  final CloudinaryService _cloudinaryService = CloudinaryService();
 
   bool _isUploading = false;
   double _uploadProgress = 0.0;
@@ -53,11 +55,39 @@ class AdminProvider extends ChangeNotifier {
 
   // Product Actions
   Future<void> saveProduct(Product product) async {
+    if (product.id.isNotEmpty) {
+      try {
+        final oldProduct = await _firestoreService.getProductById(product.id);
+        if (oldProduct != null) {
+          final oldPublicIds = oldProduct.images.map((img) => img.publicId).where((id) => id.isNotEmpty).toSet();
+          final newPublicIds = product.images.map((img) => img.publicId).where((id) => id.isNotEmpty).toSet();
+          
+          final removedIds = oldPublicIds.difference(newPublicIds);
+          for (final publicId in removedIds) {
+            await _cloudinaryService.deleteImage(publicId);
+          }
+        }
+      } catch (e) {
+        print('Error cleaning up deleted images during product save: $e');
+      }
+    }
     await _firestoreService.saveProduct(product);
     notifyListeners();
   }
 
   Future<void> deleteProduct(String id) async {
+    try {
+      final product = await _firestoreService.getProductById(id);
+      if (product != null) {
+        for (final img in product.images) {
+          if (img.publicId.isNotEmpty) {
+            await _cloudinaryService.deleteImage(img.publicId);
+          }
+        }
+      }
+    } catch (e) {
+      print('Error cleaning up images during product deletion: $e');
+    }
     await _firestoreService.deleteProduct(id);
     notifyListeners();
   }
@@ -131,10 +161,34 @@ class AdminProvider extends ChangeNotifier {
 
   // Banner Actions
   Future<void> saveHeroBanner(HeroBannerItem banner) async {
+    if (banner.id.isNotEmpty) {
+      try {
+        final oldBanners = await _firestoreService.streamHeroBanners().first;
+        final oldBanner = oldBanners.firstWhere((b) => b.id == banner.id);
+        if (oldBanner.imageUrl != banner.imageUrl) {
+          final oldPublicId = _cloudinaryService.extractPublicId(oldBanner.imageUrl);
+          if (oldPublicId != null) {
+            await _cloudinaryService.deleteImage(oldPublicId);
+          }
+        }
+      } catch (e) {
+        print('Error cleaning up banner image on save: $e');
+      }
+    }
     await _firestoreService.saveHeroBanner(banner);
   }
 
   Future<void> deleteHeroBanner(String id) async {
+    try {
+      final oldBanners = await _firestoreService.streamHeroBanners().first;
+      final oldBanner = oldBanners.firstWhere((b) => b.id == id);
+      final oldPublicId = _cloudinaryService.extractPublicId(oldBanner.imageUrl);
+      if (oldPublicId != null) {
+        await _cloudinaryService.deleteImage(oldPublicId);
+      }
+    } catch (e) {
+      print('Error cleaning up banner image on delete: $e');
+    }
     await _firestoreService.deleteHeroBanner(id);
   }
 }

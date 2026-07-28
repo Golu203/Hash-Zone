@@ -77,4 +77,57 @@ class CloudinaryService {
       throw Exception('Cloudinary upload failed [Status ${response.statusCode}]: ${response.body}');
     }
   }
+
+  /// Triggers a secure serverless deletion request via Vercel backend using the image's publicId.
+  Future<bool> deleteImage(String publicId) async {
+    if (publicId.isEmpty) return false;
+    
+    try {
+      // Use relative URL for Vercel Web deployment
+      final uri = Uri.parse('/api/delete-image');
+      final response = await http.post(
+        uri,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'public_id': publicId}),
+      );
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['result'] == 'ok';
+      } else {
+        print('Cloudinary deletion failed [Status ${response.statusCode}]: ${response.body}');
+        return false;
+      }
+    } catch (e) {
+      print('Error calling Cloudinary deletion API: $e');
+      return false;
+    }
+  }
+
+  /// Extracts the Cloudinary publicId from a secure URL.
+  String? extractPublicId(String url) {
+    if (!url.contains('res.cloudinary.com')) return null;
+    try {
+      final uri = Uri.parse(url);
+      final pathSegments = uri.pathSegments;
+      final uploadIdx = pathSegments.indexOf('upload');
+      if (uploadIdx == -1 || uploadIdx >= pathSegments.length - 1) return null;
+      
+      var startIndex = uploadIdx + 1;
+      // Skip the version segment (e.g. v17218392)
+      if (startIndex < pathSegments.length &&
+          pathSegments[startIndex].startsWith('v') &&
+          RegExp(r'^v\d+$').hasMatch(pathSegments[startIndex])) {
+        startIndex += 1;
+      }
+      
+      final segments = pathSegments.sublist(startIndex);
+      final fullPublicIdWithExt = segments.join('/');
+      final dotIdx = fullPublicIdWithExt.lastIndexOf('.');
+      if (dotIdx == -1) return fullPublicIdWithExt;
+      return fullPublicIdWithExt.substring(0, dotIdx);
+    } catch (e) {
+      return null;
+    }
+  }
 }
