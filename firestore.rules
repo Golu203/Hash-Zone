@@ -1,0 +1,30 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Allow public read access to catalog data and settings
+    match /departments/{docId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    match /categories/{docId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    match /subcategories/{docId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    match /products/{docId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    match /hero_banners/{docId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    match /settings/{docId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+  }
+}
