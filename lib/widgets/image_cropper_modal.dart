@@ -265,66 +265,129 @@ class _HZImageCropperModalState extends State<HZImageCropperModal> {
             children: [
               // Header Title & Control Bar
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                padding: EdgeInsets.symmetric(
+                  horizontal: isMobile ? 12 : 24,
+                  vertical: isMobile ? 8 : 16,
+                ),
                 color: const Color(0xFF000000),
-                child: Row(
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.close, color: Colors.white),
-                      tooltip: 'Cancel',
-                      onPressed: () => Navigator.pop(context, null),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
+                child: isMobile
+                    ? Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            _getRatioLabel(),
-                            style: GoogleFonts.inter(
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 1.2,
-                              color: Colors.white,
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.close, color: Colors.white),
+                                tooltip: 'Cancel',
+                                onPressed: () => Navigator.pop(context, null),
+                              ),
+                              Row(
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(Icons.fit_screen, color: Colors.white),
+                                    tooltip: 'Fit to Frame',
+                                    onPressed: _fitImageToVisibleArea,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  ElevatedButton(
+                                    onPressed: _isLoading ? null : _processAndApplyCrop,
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.white,
+                                      foregroundColor: Colors.black,
+                                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                    ),
+                                    child: Text(
+                                      _isLoading ? '...' : 'APPLY',
+                                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  _getRatioLabel(),
+                                  style: GoogleFonts.inter(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 0.8,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  'Drag or zoom the image inside the fixed frame.',
+                                  style: GoogleFonts.inter(fontSize: 10, color: Colors.white60),
+                                ),
+                              ],
                             ),
                           ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'Drag or zoom the image inside the fixed frame. Visible area is locked to exact proportions.',
-                            style: GoogleFonts.inter(fontSize: 11, color: Colors.white60),
+                        ],
+                      )
+                    : Row(
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.close, color: Colors.white),
+                            tooltip: 'Cancel',
+                            onPressed: () => Navigator.pop(context, null),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  _getRatioLabel(),
+                                  style: GoogleFonts.inter(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 1.2,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  'Drag or zoom the image inside the fixed frame. Visible area is locked to exact proportions.',
+                                  style: GoogleFonts.inter(fontSize: 11, color: Colors.white60),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+
+                          // FIT TO VISIBLE AREA Quick Button
+                          ElevatedButton.icon(
+                            onPressed: _fitImageToVisibleArea,
+                            icon: const Icon(Icons.fit_screen, size: 16),
+                            label: const Text('FIT TO VISIBLE FRAME', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF222222),
+                              foregroundColor: Colors.white,
+                              side: const BorderSide(color: Colors.white54),
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+
+                          // Apply Button
+                          ElevatedButton.icon(
+                            onPressed: _isLoading ? null : _processAndApplyCrop,
+                            icon: const Icon(Icons.check, size: 18),
+                            label: Text(_isLoading ? 'PROCESSING...' : 'APPLY & USE'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.white,
+                              foregroundColor: Colors.black,
+                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                            ),
                           ),
                         ],
                       ),
-                    ),
-                    const SizedBox(width: 12),
-
-                    // FIT TO VISIBLE AREA Quick Button
-                    ElevatedButton.icon(
-                      onPressed: _fitImageToVisibleArea,
-                      icon: const Icon(Icons.fit_screen, size: 16),
-                      label: const Text('FIT TO VISIBLE FRAME', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF222222),
-                        foregroundColor: Colors.white,
-                        side: const BorderSide(color: Colors.white54),
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-
-                    // Apply Button
-                    ElevatedButton.icon(
-                      onPressed: _isLoading ? null : _processAndApplyCrop,
-                      icon: const Icon(Icons.check, size: 18),
-                      label: Text(_isLoading ? 'PROCESSING...' : 'APPLY & USE'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: Colors.black,
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                      ),
-                    ),
-                  ],
-                ),
               ),
 
               // Interactive Image Adjusting Workspace (Fixed Locked Crop Window)
@@ -435,71 +498,131 @@ class _HZImageCropperModalState extends State<HZImageCropperModal> {
 
               // Bottom Control Bar (Image Size Zoom & Rotation)
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                padding: EdgeInsets.symmetric(
+                  horizontal: isMobile ? 12 : 24,
+                  vertical: isMobile ? 10 : 16,
+                ),
                 color: const Color(0xFF000000),
-                child: Row(
-                  children: [
-                    // Fit to Visible Frame Button
-                    ElevatedButton.icon(
-                      onPressed: _fitImageToVisibleArea,
-                      icon: const Icon(Icons.fit_screen, size: 16, color: Colors.black),
-                      label: const Text(
-                        'FIT TO VISIBLE AREA',
-                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.black),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-
-                    // Rotation Action
-                    OutlinedButton.icon(
-                      onPressed: _rotateClockwise,
-                      icon: const Icon(Icons.rotate_90_degrees_cw, color: Colors.white, size: 18),
-                      label: const Text('ROTATE 90°', style: TextStyle(color: Colors.white, fontSize: 11)),
-                      style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.white38)),
-                    ),
-                    const SizedBox(width: 12),
-
-                    // Reset Action
-                    OutlinedButton.icon(
-                      onPressed: _resetAdjustment,
-                      icon: const Icon(Icons.refresh, color: Colors.white, size: 18),
-                      label: const Text('RESET', style: TextStyle(color: Colors.white, fontSize: 11)),
-                      style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.white38)),
-                    ),
-
-                    const SizedBox(width: 24),
-
-                    // Image Scale Zoom Slider
-                    Text('Adjust Image Size:', style: GoogleFonts.inter(fontSize: 11, color: Colors.white70, fontWeight: FontWeight.bold)),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Row(
+                child: isMobile
+                    ? Column(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.zoom_out, color: Colors.white54, size: 18),
-                          Expanded(
-                            child: Slider(
-                              value: _imageScale.clamp(0.2, 4.0),
-                              min: 0.2,
-                              max: 4.0,
-                              activeColor: Colors.white,
-                              inactiveColor: Colors.white24,
-                              onChanged: (val) {
-                                setState(() {
-                                  _imageScale = val;
-                                });
-                              },
+                          // Zoom slider row
+                          Row(
+                            children: [
+                              const Icon(Icons.zoom_out, color: Colors.white54, size: 16),
+                              Expanded(
+                                child: Slider(
+                                  value: _imageScale.clamp(0.2, 4.0),
+                                  min: 0.2,
+                                  max: 4.0,
+                                  activeColor: Colors.white,
+                                  inactiveColor: Colors.white24,
+                                  onChanged: (val) {
+                                    setState(() {
+                                      _imageScale = val;
+                                    });
+                                  },
+                                ),
+                              ),
+                              const Icon(Icons.zoom_in, color: Colors.white, size: 16),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          // Control buttons row
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceAround,
+                            children: [
+                              TextButton.icon(
+                                onPressed: _fitImageToVisibleArea,
+                                icon: const Icon(Icons.fit_screen, size: 16, color: Colors.white),
+                                label: const Text('FIT', style: TextStyle(color: Colors.white, fontSize: 11)),
+                              ),
+                              OutlinedButton.icon(
+                                onPressed: _rotateClockwise,
+                                icon: const Icon(Icons.rotate_90_degrees_cw, color: Colors.white, size: 16),
+                                label: const Text('ROTATE', style: TextStyle(color: Colors.white, fontSize: 11)),
+                                style: OutlinedButton.styleFrom(
+                                  side: const BorderSide(color: Colors.white38),
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                ),
+                              ),
+                              OutlinedButton.icon(
+                                onPressed: _resetAdjustment,
+                                icon: const Icon(Icons.refresh, color: Colors.white, size: 16),
+                                label: const Text('RESET', style: TextStyle(color: Colors.white, fontSize: 11)),
+                                style: OutlinedButton.styleFrom(
+                                  side: const BorderSide(color: Colors.white38),
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      )
+                    : Row(
+                        children: [
+                          // Fit to Visible Frame Button
+                          ElevatedButton.icon(
+                            onPressed: _fitImageToVisibleArea,
+                            icon: const Icon(Icons.fit_screen, size: 16, color: Colors.black),
+                            label: const Text(
+                              'FIT TO VISIBLE AREA',
+                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.black),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                             ),
                           ),
-                          const Icon(Icons.zoom_in, color: Colors.white, size: 18),
+                          const SizedBox(width: 12),
+
+                          // Rotation Action
+                          OutlinedButton.icon(
+                            onPressed: _rotateClockwise,
+                            icon: const Icon(Icons.rotate_90_degrees_cw, color: Colors.white, size: 18),
+                            label: const Text('ROTATE 90°', style: TextStyle(color: Colors.white, fontSize: 11)),
+                            style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.white38)),
+                          ),
+                          const SizedBox(width: 12),
+
+                          // Reset Action
+                          OutlinedButton.icon(
+                            onPressed: _resetAdjustment,
+                            icon: const Icon(Icons.refresh, color: Colors.white, size: 18),
+                            label: const Text('RESET', style: TextStyle(color: Colors.white, fontSize: 11)),
+                            style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.white38)),
+                          ),
+
+                          const SizedBox(width: 24),
+
+                          // Image Scale Zoom Slider
+                          Text('Adjust Image Size:', style: GoogleFonts.inter(fontSize: 11, color: Colors.white70, fontWeight: FontWeight.bold)),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Row(
+                              children: [
+                                const Icon(Icons.zoom_out, color: Colors.white54, size: 18),
+                                Expanded(
+                                  child: Slider(
+                                    value: _imageScale.clamp(0.2, 4.0),
+                                    min: 0.2,
+                                    max: 4.0,
+                                    activeColor: Colors.white,
+                                    inactiveColor: Colors.white24,
+                                    onChanged: (val) {
+                                      setState(() {
+                                        _imageScale = val;
+                                      });
+                                    },
+                                  ),
+                                ),
+                                const Icon(Icons.zoom_in, color: Colors.white, size: 18),
+                              ],
+                            ),
+                          ),
                         ],
                       ),
-                    ),
-                  ],
-                ),
               ),
             ],
           ),

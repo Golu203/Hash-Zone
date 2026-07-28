@@ -114,19 +114,19 @@ class AdminDashboardScreen extends StatelessWidget {
             ),
             const SizedBox(height: 16),
 
-            // KPI Summary Row (Bold Black Borders & Defined Cards)
+            // KPI Summary Row (Responsive Grid: wider aspect ratio on mobile to fit the horizontal row layout)
             GridView.count(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               crossAxisCount: isDesktop ? 4 : 2,
-              crossAxisSpacing: 20,
-              mainAxisSpacing: 20,
-              childAspectRatio: isDesktop ? 1.6 : 1.3,
+              crossAxisSpacing: isDesktop ? 20 : 12,
+              mainAxisSpacing: isDesktop ? 20 : 12,
+              childAspectRatio: isDesktop ? 1.6 : 2.2,
               children: [
-                _kpiCard('TOTAL PRODUCTS', catalog.products.length.toString(), Icons.checkroom),
-                _kpiCard('SEGMENTS', catalog.departments.length.toString(), Icons.domain),
-                _kpiCard('CATEGORIES', catalog.categories.length.toString(), Icons.category),
-                _kpiCard('HERO BANNERS', catalog.heroBanners.length.toString(), Icons.view_carousel),
+                _kpiCard(context, 'TOTAL PRODUCTS', catalog.products.length.toString(), Icons.checkroom),
+                _kpiCard(context, 'SEGMENTS', catalog.departments.length.toString(), Icons.domain),
+                _kpiCard(context, 'CATEGORIES', catalog.categories.length.toString(), Icons.category),
+                _kpiCard(context, 'HERO BANNERS', catalog.heroBanners.length.toString(), Icons.view_carousel),
               ],
             ),
 
@@ -143,45 +143,81 @@ class AdminDashboardScreen extends StatelessWidget {
             ),
             const SizedBox(height: 16),
 
-            // Modules Grid with Bold Black Borders
-            GridView.count(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisCount: isDesktop ? 2 : 1,
-              crossAxisSpacing: 24,
-              mainAxisSpacing: 24,
-              childAspectRatio: isDesktop ? 2.2 : 2.4,
-              children: [
-                _moduleCard(
-                  context,
-                  title: 'Products Management',
-                  subtitle: 'Add, edit, assign sizes, re-order Cloudinary images, toggle featured & offers.',
-                  icon: Icons.inventory_2_outlined,
-                  route: '/admin/products',
-                ),
-                _moduleCard(
-                  context,
-                  title: 'Taxonomies & Sizes',
-                  subtitle: 'Manage Segments, toggle Sizes Applicable on/off, set Categories & Subcategories.',
-                  icon: Icons.account_tree_outlined,
-                  route: '/admin/taxonomy',
-                ),
-                _moduleCard(
-                  context,
-                  title: 'Hero Banners & Offers',
-                  subtitle: 'Upload homepage hero slider banners and promotional headlines.',
-                  icon: Icons.view_carousel_outlined,
-                  route: '/admin/banners',
-                ),
-                _moduleCard(
-                  context,
-                  title: 'Business & Contact Settings',
-                  subtitle: 'Edit WhatsApp number, call number, store address, and opening hours.',
-                  icon: Icons.settings_outlined,
-                  route: '/admin/settings',
-                ),
-              ],
-            ),
+            // Modules Layout (Responsive: Grid on desktop, dynamically-sized Column on mobile to avoid clipping)
+            isDesktop
+                ? GridView.count(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 24,
+                    mainAxisSpacing: 24,
+                    childAspectRatio: 2.2,
+                    children: [
+                      _moduleCard(
+                        context,
+                        title: 'Products Management',
+                        subtitle: 'Add, edit, assign sizes, re-order Cloudinary images, toggle featured & offers.',
+                        icon: Icons.inventory_2_outlined,
+                        route: '/admin/products',
+                      ),
+                      _moduleCard(
+                        context,
+                        title: 'Taxonomies & Sizes',
+                        subtitle: 'Manage Segments, toggle Sizes Applicable on/off, set Categories & Subcategories.',
+                        icon: Icons.account_tree_outlined,
+                        route: '/admin/taxonomy',
+                      ),
+                      _moduleCard(
+                        context,
+                        title: 'Hero Banners & Offers',
+                        subtitle: 'Upload homepage hero slider banners and promotional headlines.',
+                        icon: Icons.view_carousel_outlined,
+                        route: '/admin/banners',
+                      ),
+                      _moduleCard(
+                        context,
+                        title: 'Business & Contact Settings',
+                        subtitle: 'Edit WhatsApp number, call number, store address, and opening hours.',
+                        icon: Icons.settings_outlined,
+                        route: '/admin/settings',
+                      ),
+                    ],
+                  )
+                : Column(
+                    children: [
+                      _moduleCard(
+                        context,
+                        title: 'Products Management',
+                        subtitle: 'Add, edit, assign sizes, re-order Cloudinary images, toggle featured & offers.',
+                        icon: Icons.inventory_2_outlined,
+                        route: '/admin/products',
+                      ),
+                      const SizedBox(height: 16),
+                      _moduleCard(
+                        context,
+                        title: 'Taxonomies & Sizes',
+                        subtitle: 'Manage Segments, toggle Sizes Applicable on/off, set Categories & Subcategories.',
+                        icon: Icons.account_tree_outlined,
+                        route: '/admin/taxonomy',
+                      ),
+                      const SizedBox(height: 16),
+                      _moduleCard(
+                        context,
+                        title: 'Hero Banners & Offers',
+                        subtitle: 'Upload homepage hero slider banners and promotional headlines.',
+                        icon: Icons.view_carousel_outlined,
+                        route: '/admin/banners',
+                      ),
+                      const SizedBox(height: 16),
+                      _moduleCard(
+                        context,
+                        title: 'Business & Contact Settings',
+                        subtitle: 'Edit WhatsApp number, call number, store address, and opening hours.',
+                        icon: Icons.settings_outlined,
+                        route: '/admin/settings',
+                      ),
+                    ],
+                  ),
 
             const SizedBox(height: 40),
 
@@ -240,7 +276,69 @@ class AdminDashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _kpiCard(String title, String value, IconData icon) {
+  Widget _kpiCard(BuildContext context, String title, String value, IconData icon) {
+    final isMobile = MediaQuery.of(context).size.width < 600;
+
+    if (isMobile) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFF000000), width: 1.5),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x0C000000),
+              blurRadius: 6,
+              offset: Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF0F0F2),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFF000000), width: 1.0),
+              ),
+              child: Icon(icon, color: const Color(0xFF000000), size: 18),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    value,
+                    style: GoogleFonts.cormorantGaramond(
+                      fontSize: 26,
+                      fontWeight: FontWeight.bold,
+                      color: const Color(0xFF000000),
+                    ),
+                  ),
+                  const SizedBox(height: 1),
+                  Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.inter(
+                      fontSize: 9,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.5,
+                      color: const Color(0xFF444444),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -303,11 +401,13 @@ class AdminDashboardScreen extends StatelessWidget {
     required IconData icon,
     required String route,
   }) {
+    final isMobile = MediaQuery.of(context).size.width < 600;
+
     return InkWell(
       onTap: () => context.go(route),
       borderRadius: BorderRadius.circular(16),
       child: Container(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(isMobile ? 16 : 24),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
@@ -323,14 +423,14 @@ class AdminDashboardScreen extends StatelessWidget {
         child: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(isMobile ? 12 : 16),
               decoration: BoxDecoration(
                 color: const Color(0xFF000000),
                 borderRadius: BorderRadius.circular(14),
               ),
-              child: Icon(icon, color: Colors.white, size: 28),
+              child: Icon(icon, color: Colors.white, size: isMobile ? 22 : 28),
             ),
-            const SizedBox(width: 20),
+            SizedBox(width: isMobile ? 14 : 20),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -339,26 +439,31 @@ class AdminDashboardScreen extends StatelessWidget {
                   Text(
                     title,
                     style: GoogleFonts.inter(
-                      fontSize: 16,
+                      fontSize: isMobile ? 14 : 16,
                       fontWeight: FontWeight.bold,
                       color: const Color(0xFF000000),
                     ),
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 4),
                   Text(
                     subtitle,
-                    style: GoogleFonts.inter(fontSize: 12, height: 1.4, color: const Color(0xFF444444)),
+                    style: GoogleFonts.inter(
+                      fontSize: isMobile ? 11 : 12,
+                      height: 1.3,
+                      color: const Color(0xFF444444),
+                    ),
                   ),
                 ],
               ),
             ),
+            const SizedBox(width: 8),
             Container(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(color: const Color(0xFF000000), width: 1.5),
               ),
-              child: const Icon(Icons.arrow_forward, color: Color(0xFF000000), size: 16),
+              child: Icon(Icons.arrow_forward, color: const Color(0xFF000000), size: isMobile ? 12 : 16),
             ),
           ],
         ),
