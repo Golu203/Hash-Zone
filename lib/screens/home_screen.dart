@@ -217,14 +217,16 @@ class _HomeScreenState extends State<HomeScreen> {
                         final cols = sw < 460 ? 1 : sw < 780 ? 2 : sw < 1080 ? 3 : 4;
                         final gap = 20.0;
                         final cw = (sw - (cols - 1) * gap) / cols;
+                        final isMobile = sw < 460;
+                        final infoH = isMobile ? 175.0 : 190.0;
                         return Wrap(
                           spacing: gap,
                           runSpacing: gap,
                           children: catalog.featuredProducts.take(8).map((product) {
-                          return SizedBox(
+                            return SizedBox(
                               width: cw,
                               // height = image (3:4) + info section
-                              height: cw * (4 / 3) + (cw < 200 ? 116.0 : 136.0),
+                              height: cw * (4 / 3) + infoH,
                               child: ProductCard(product: product),
                             );
                           }).toList(),
@@ -261,14 +263,16 @@ class _HomeScreenState extends State<HomeScreen> {
                         final cols = sw < 460 ? 1 : sw < 780 ? 2 : sw < 1080 ? 3 : 4;
                         final gap = 20.0;
                         final cw = (sw - (cols - 1) * gap) / cols;
+                        final isMobile = sw < 460;
+                        final infoH = isMobile ? 175.0 : 190.0;
                         return Wrap(
                           spacing: gap,
                           runSpacing: gap,
                           children: catalog.offerProducts.take(8).map((product) {
-                          return SizedBox(
+                            return SizedBox(
                               width: cw,
                               // height = image (3:4) + info section
-                              height: cw * (4 / 3) + (cw < 200 ? 116.0 : 136.0),
+                              height: cw * (4 / 3) + infoH,
                               child: ProductCard(product: product),
                             );
                           }).toList(),
