@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'free_cropper_modal.dart';
 
 enum CropAspectRatioOption {
   product3x4,
@@ -32,11 +33,25 @@ class HZImageCropperModal extends StatefulWidget {
     required String filename,
     CropAspectRatioOption initialRatio = CropAspectRatioOption.product3x4,
   }) async {
+    // Step 1: Open Free Cropper Modal
+    final freeCroppedBytes = await HZFreeCropperModal.cropImage(
+      context,
+      imageBytes: imageBytes,
+      filename: filename,
+    );
+
+    if (freeCroppedBytes == null) {
+      return null; // User cancelled
+    }
+
+    // Step 2: Open Aspect Ratio / Alignment Cropper Modal
+    if (!context.mounted) return null;
+
     return showDialog<Uint8List>(
       context: context,
       barrierDismissible: false,
       builder: (context) => HZImageCropperModal(
-        imageBytes: imageBytes,
+        imageBytes: freeCroppedBytes,
         filename: filename,
         initialRatio: initialRatio,
       ),
