@@ -367,28 +367,39 @@ class _HZSizePriceTableState extends State<HZSizePriceTable> {
               border: Border.all(color: const Color(0xFFE5E5E5)),
             ),
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                IconButton(
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                  icon: Icon(
-                    Icons.keyboard_arrow_up_rounded,
-                    size: 16,
-                    color: _canScrollUp ? Colors.black : Colors.black26,
+                Expanded(
+                  child: InkWell(
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(5),
+                      topRight: Radius.circular(5),
+                    ),
+                    onTap: _canScrollUp ? scrollUpOneRow : null,
+                    child: Center(
+                      child: Icon(
+                        Icons.keyboard_arrow_up_rounded,
+                        size: 16,
+                        color: _canScrollUp ? Colors.black : Colors.black26,
+                      ),
+                    ),
                   ),
-                  onPressed: _canScrollUp ? scrollUpOneRow : null,
                 ),
                 const Divider(height: 1, color: Color(0xFFD5D5D5), indent: 4, endIndent: 4),
-                IconButton(
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                  icon: Icon(
-                    Icons.keyboard_arrow_down_rounded,
-                    size: 16,
-                    color: _canScrollDown ? Colors.black : Colors.black26,
+                Expanded(
+                  child: InkWell(
+                    borderRadius: const BorderRadius.only(
+                      bottomLeft: Radius.circular(5),
+                      bottomRight: Radius.circular(5),
+                    ),
+                    onTap: _canScrollDown ? scrollDownOneRow : null,
+                    child: Center(
+                      child: Icon(
+                        Icons.keyboard_arrow_down_rounded,
+                        size: 16,
+                        color: _canScrollDown ? Colors.black : Colors.black26,
+                      ),
+                    ),
                   ),
-                  onPressed: _canScrollDown ? scrollDownOneRow : null,
                 ),
               ],
             ),

@@ -17,6 +17,7 @@ class AboutScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final screenSize = MediaQuery.of(context).size;
     final isDesktop = screenSize.width >= 900;
+    final isMobile = screenSize.width < 600;
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       SeoHelper.updateMetadata(
@@ -252,6 +253,7 @@ class AboutScreen extends StatelessWidget {
                             title: 'MEN',
                             icon: Icons.man_outlined,
                             subtitle: 'Menswear & Casuals',
+                            isMobile: isMobile,
                           ),
                         ),
                         const SizedBox(width: 16),
@@ -260,6 +262,7 @@ class AboutScreen extends StatelessWidget {
                             title: 'WOMEN',
                             icon: Icons.woman_outlined,
                             subtitle: 'Womenswear & Ethnic',
+                            isMobile: isMobile,
                           ),
                         ),
                         const SizedBox(width: 16),
@@ -268,6 +271,7 @@ class AboutScreen extends StatelessWidget {
                             title: 'KIDS',
                             icon: Icons.child_care_outlined,
                             subtitle: 'Kidswear & Juniors',
+                            isMobile: isMobile,
                           ),
                         ),
                       ],
@@ -473,9 +477,10 @@ class AboutScreen extends StatelessWidget {
     required String title,
     required IconData icon,
     required String subtitle,
+    required bool isMobile,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+      padding: EdgeInsets.symmetric(vertical: 24, horizontal: isMobile ? 6 : 16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -484,17 +489,17 @@ class AboutScreen extends StatelessWidget {
       child: Column(
         children: [
           CircleAvatar(
-            radius: 26,
+            radius: isMobile ? 22 : 26,
             backgroundColor: const Color(0xFF111111),
-            child: Icon(icon, color: Colors.white, size: 28),
+            child: Icon(icon, color: Colors.white, size: isMobile ? 22 : 28),
           ),
           const SizedBox(height: 14),
           Text(
             title,
             style: GoogleFonts.inter(
-              fontSize: 16,
+              fontSize: isMobile ? 12 : 16,
               fontWeight: FontWeight.bold,
-              letterSpacing: 1.5,
+              letterSpacing: isMobile ? 0.5 : 1.5,
               color: Colors.black,
             ),
           ),
@@ -502,7 +507,7 @@ class AboutScreen extends StatelessWidget {
           Text(
             subtitle,
             textAlign: TextAlign.center,
-            style: GoogleFonts.inter(fontSize: 11, color: const Color(0xFF666666)),
+            style: GoogleFonts.inter(fontSize: isMobile ? 10 : 11, color: const Color(0xFF666666)),
           ),
         ],
       ),
