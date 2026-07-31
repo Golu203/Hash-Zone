@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../providers/business_provider.dart';
 import '../providers/catalog_provider.dart';
+import '../providers/cart_provider.dart';
 
 class HZNavBar extends StatefulWidget implements PreferredSizeWidget {
   const HZNavBar({super.key});
@@ -270,6 +271,24 @@ class _HZNavBarState extends State<HZNavBar> {
                       ),
                       const SizedBox(width: 12),
 
+                      if (business.settings.enableShoppingCart) ...[
+                        Consumer<CartProvider>(
+                          builder: (context, cart, child) {
+                            return Badge(
+                              label: Text('${cart.totalQuantity}'),
+                              isLabelVisible: cart.totalQuantity > 0,
+                              backgroundColor: Colors.red,
+                              textColor: Colors.white,
+                              child: IconButton(
+                                icon: const Icon(Icons.shopping_bag_outlined, color: Colors.black, size: 24),
+                                onPressed: () => context.go('/cart'),
+                              ),
+                            );
+                          },
+                        ),
+                        const SizedBox(width: 16),
+                      ],
+
                       // Admin Portal Shortcut Button (Fixed & Always Visible)
                       ElevatedButton.icon(
                         onPressed: () => context.go('/admin'),
@@ -293,6 +312,23 @@ class _HZNavBarState extends State<HZNavBar> {
                       ),
                     ] else ...[
                       const Spacer(),
+                      if (business.settings.enableShoppingCart) ...[
+                        Consumer<CartProvider>(
+                          builder: (context, cart, child) {
+                            return Badge(
+                              label: Text('${cart.totalQuantity}'),
+                              isLabelVisible: cart.totalQuantity > 0,
+                              backgroundColor: Colors.red,
+                              textColor: Colors.white,
+                              child: IconButton(
+                                icon: const Icon(Icons.shopping_bag_outlined, color: Colors.black, size: 24),
+                                onPressed: () => context.go('/cart'),
+                              ),
+                            );
+                          },
+                        ),
+                        const SizedBox(width: 8),
+                      ],
                       Builder(
                         builder: (context) {
                           return IconButton(
@@ -438,6 +474,8 @@ class HZMobileDrawer extends StatelessWidget {
                 children: [
                   _drawerItem(context, Icons.home_outlined, 'HOME', '/'),
                   _drawerItem(context, Icons.local_offer_outlined, 'OFFERS & DEALS', '/products?offers=true'),
+                  if (business.settings.enableShoppingCart)
+                    _drawerItem(context, Icons.shopping_bag_outlined, 'SHOPPING CART', '/cart'),
                   
                   if (catalog.departments.isNotEmpty) ...[
                     Padding(

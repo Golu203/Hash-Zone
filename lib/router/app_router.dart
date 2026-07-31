@@ -9,12 +9,16 @@ import '../screens/admin/admin_products_screen.dart';
 import '../screens/admin/admin_settings_screen.dart';
 import '../screens/admin/admin_taxonomy_screen.dart';
 import '../screens/admin/admin_user_manual_screen.dart';
+import '../screens/admin/admin_supply_network_screen.dart';
 import '../screens/contact_screen.dart';
 import '../screens/home_screen.dart';
 import '../screens/product_detail_screen.dart';
 import '../screens/products_screen.dart';
 import '../screens/error_screen.dart';
 import '../services/auth_service.dart';
+import '../providers/business_provider.dart';
+import '../screens/cart_screen.dart';
+import 'package:provider/provider.dart';
 
 final appRouter = GoRouter(
   initialLocation: '/',
@@ -62,6 +66,16 @@ final appRouter = GoRouter(
       path: '/contact',
       builder: (context, state) => const ContactScreen(),
     ),
+    GoRoute(
+      path: '/cart',
+      builder: (context, state) {
+        final business = Provider.of<BusinessProvider>(context, listen: false);
+        if (!business.settings.enableShoppingCart) {
+          return const HomeScreen();
+        }
+        return const CartScreen();
+      },
+    ),
 
     // Admin Portal Routes
     GoRoute(
@@ -106,6 +120,10 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/admin/manual',
       builder: (context, state) => const AdminUserManualScreen(),
+    ),
+    GoRoute(
+      path: '/admin/supply-network',
+      builder: (context, state) => const AdminSupplyNetworkScreen(),
     ),
   ],
 );

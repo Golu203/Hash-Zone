@@ -16,6 +16,7 @@ class BusinessSettings {
   final String popupImageUrl;
   final String popupLinkUrl;
   final String popupActionText;
+  final bool enableShoppingCart;
 
   BusinessSettings({
     this.whatsAppNumber = '+919876543210',
@@ -39,6 +40,7 @@ class BusinessSettings {
     this.popupImageUrl = '',
     this.popupLinkUrl = '/products',
     this.popupActionText = 'EXPLORE SPECIAL OFFER',
+    this.enableShoppingCart = false,
   });
 
   factory BusinessSettings.fromMap(Map<String, dynamic> map) {
@@ -82,6 +84,7 @@ class BusinessSettings {
       popupImageUrl: map['popupImageUrl'] ?? '',
       popupLinkUrl: map['popupLinkUrl'] ?? '/products',
       popupActionText: map['popupActionText'] ?? 'EXPLORE SPECIAL OFFER',
+      enableShoppingCart: map['enableShoppingCart'] ?? false,
     );
   }
 
@@ -102,6 +105,7 @@ class BusinessSettings {
       'popupImageUrl': popupImageUrl,
       'popupLinkUrl': popupLinkUrl,
       'popupActionText': popupActionText,
+      'enableShoppingCart': enableShoppingCart,
     };
   }
 }

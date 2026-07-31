@@ -6,6 +6,7 @@ import '../models/product.dart';
 import '../models/hero_banner.dart';
 import '../models/business_settings.dart';
 import '../models/cloudinary_image.dart';
+import '../models/supply_state.dart';
 
 class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
@@ -396,5 +397,27 @@ class FirestoreService {
       isOffer: true,
       tags: ['Leather', 'Bag', 'Accessories'],
     ).toMap());
+  }
+
+  // Supply Network Methods
+  Stream<List<SupplyState>> streamSupplyNetwork() {
+    return _db
+        .collection('supply_network')
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => SupplyState.fromMap(doc.data(), doc.id))
+            .toList());
+  }
+
+  Future<void> saveSupplyState(SupplyState state) async {
+    if (state.id.isEmpty) {
+      await _db.collection('supply_network').add(state.toMap());
+    } else {
+      await _db.collection('supply_network').doc(state.id).set(state.toMap(), SetOptions(merge: true));
+    }
+  }
+
+  Future<void> deleteSupplyState(String id) async {
+    await _db.collection('supply_network').doc(id).delete();
   }
 }

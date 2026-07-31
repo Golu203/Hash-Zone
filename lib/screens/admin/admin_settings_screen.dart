@@ -35,6 +35,7 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
 
   // Promo Popup Controllers & State
   bool _isPopupActive = false;
+  bool _enableShoppingCart = false;
   final _popupLinkController = TextEditingController(text: '/products');
   final _popupActionTextController = TextEditingController(text: 'EXPLORE SPECIAL OFFER');
   String _uploadedPopupImageUrl = '';
@@ -72,6 +73,7 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
     _uploadedPopupImageUrl = s.popupImageUrl;
     _popupLinkController.text = s.popupLinkUrl;
     _popupActionTextController.text = s.popupActionText.isNotEmpty ? s.popupActionText : 'EXPLORE SPECIAL OFFER';
+    _enableShoppingCart = s.enableShoppingCart;
   }
 
   @override
@@ -173,6 +175,7 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
       popupImageUrl: _uploadedPopupImageUrl,
       popupLinkUrl: _popupLinkController.text.trim(),
       popupActionText: _popupActionTextController.text.trim(),
+      enableShoppingCart: _enableShoppingCart,
     );
 
     try {
@@ -229,9 +232,42 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // SHOPPING CART CONFIGURATION SECTION
+            Text(
+              '1. SHOPPING CART CONFIGURATION',
+              style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1.5, color: const Color(0xFF000000)),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFF000000), width: 2.0),
+              ),
+              child: SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(
+                  'Enable Shopping Cart & Multi-Item Ordering',
+                  style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black),
+                ),
+                subtitle: Text(
+                  _enableShoppingCart
+                      ? 'Shopping Cart ENABLED: Customers can add items to cart, select sizes/quantities, and submit one combined order via WhatsApp.'
+                      : 'Shopping Cart DISABLED: Single product WhatsApp inquiry flow only.',
+                  style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: _enableShoppingCart ? Colors.green[800] : Colors.grey[700]),
+                ),
+                value: _enableShoppingCart,
+                activeThumbColor: Colors.black,
+                onChanged: (val) => setState(() => _enableShoppingCart = val),
+              ),
+            ),
+
+            const SizedBox(height: 32),
+
             // PROMO POPUP ADVERTISEMENT SECTION
             Text(
-              '1. PROMO POPUP ADVERTISEMENT',
+              '2. PROMO POPUP ADVERTISEMENT',
               style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1.5, color: const Color(0xFF000000)),
             ),
             const SizedBox(height: 12),
@@ -342,7 +378,7 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
 
             // SOCIAL MEDIA LINKS SECTION
             Text(
-              '2. SOCIAL MEDIA LINKS (FOOTER INTEGRATION)',
+              '3. SOCIAL MEDIA LINKS (FOOTER INTEGRATION)',
               style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1.5, color: const Color(0xFF000000)),
             ),
             const SizedBox(height: 12),
@@ -386,7 +422,7 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
 
             // Cloudinary Section
             Text(
-              '3. CLOUDINARY PERMANENT STORAGE CONFIGURATION',
+              '4. CLOUDINARY PERMANENT STORAGE CONFIGURATION',
               style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1.5, color: const Color(0xFF000000)),
             ),
             const SizedBox(height: 12),
@@ -424,7 +460,7 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
 
             // Contact Numbers & Email
             Text(
-              '4. DIRECT CONTACT CHANNELS',
+              '5. DIRECT CONTACT CHANNELS',
               style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1.5, color: const Color(0xFF000000)),
             ),
             const SizedBox(height: 12),
@@ -499,7 +535,7 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
 
             // Store Location & Hours
             Text(
-              '5. STORE DETAILS & ANNOUNCEMENTS',
+              '6. STORE DETAILS & ANNOUNCEMENTS',
               style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1.5, color: const Color(0xFF000000)),
             ),
             const SizedBox(height: 12),

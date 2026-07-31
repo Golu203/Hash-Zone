@@ -16,10 +16,22 @@ import '../widgets/navbar.dart';
 import '../widgets/product_card.dart';
 import '../widgets/whatsapp_button.dart';
 
-class ProductDetailScreen extends StatelessWidget {
+import '../widgets/product_action_dialog.dart';
+import '../widgets/size_price_table.dart';
+import '../widgets/quantity_stepper.dart';
+import '../providers/cart_provider.dart';
+
+class ProductDetailScreen extends StatefulWidget {
   final String productId;
 
   const ProductDetailScreen({super.key, required this.productId});
+
+  @override
+  State<ProductDetailScreen> createState() => _ProductDetailScreenState();
+}
+
+class _ProductDetailScreenState extends State<ProductDetailScreen> {
+  String? _selectedSize;
 
   Future<void> _makePhoneCall(BuildContext context, String phoneNumber) async {
     final cleanNumber = phoneNumber.replaceAll(RegExp(r'[^\d+]'), '');
@@ -50,9 +62,32 @@ class ProductDetailScreen extends StatelessWidget {
 
     Product? product;
     try {
-      product = catalog.products.firstWhere((p) => p.id == productId || p.slug == productId);
+      product = catalog.products.firstWhere((p) {
+        if (p.id == widget.productId) return true;
+        if (p.slug == widget.productId) return true;
+
+        final cleanId = widget.productId.toLowerCase().trim();
+        final baseTitleSlug = p.title
+            .toLowerCase()
+            .replaceAll(RegExp(r'[^a-z0-9\s-]'), '')
+            .replaceAll(RegExp(r'\s+'), '-')
+            .replaceAll(RegExp(r'-+'), '-');
+        final cleanTitleSlug = baseTitleSlug.endsWith('-') ? baseTitleSlug.substring(0, baseTitleSlug.length - 1) : baseTitleSlug;
+        if (cleanId == cleanTitleSlug) return true;
+
+        final cleanSku = p.sku.trim().toLowerCase().replaceAll(RegExp(r'[^a-z0-9\s-]'), '').replaceAll(RegExp(r'\s+'), '-');
+        if (cleanSku.isNotEmpty && cleanId == '$cleanTitleSlug-$cleanSku') return true;
+
+        return false;
+      });
     } catch (_) {
       product = null;
+    }
+
+    if (product != null && widget.productId != product.slug) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        context.go('/product/${product!.slug}');
+      });
     }
 
     if (product == null) {
@@ -358,15 +393,109 @@ class ProductDetailScreen extends StatelessWidget {
         else
           const SizedBox.shrink(),
 
+        const SizedBox(height: 16),
+
+        HZSizePriceTable(
+          product: product,
+          isSmall: false,
+          isScrollable: false,
+        ),
+
         const SizedBox(height: 24),
         const Divider(color: Color(0xFFE5E5E5), height: 1),
         const SizedBox(height: 24),
 
-        // Interactive Customer Size Selector (If sizes available for product)
-        _ProductDetailInfoWidget(
-          product: product,
-          business: business,
-        ),
+        // Action / Stepper buttons (Direct inline rendering)
+        if (!business.settings.enableShoppingCart) ...[
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () => HZProductActionDialog.show(
+                    context,
+                    product: product,
+                    isWhatsApp: true,
+                  ),
+                  icon: const Icon(Icons.chat_outlined, color: Colors.white, size: 18),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF25D366),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    elevation: 0,
+                  ),
+                  label: Text(
+                    'INQUIRE ON WHATSAPP',
+                    style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13, letterSpacing: 0.5),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              const SizedBox(width: 56), // Placeholder to match layout with Call Store Now row
+            ],
+          ),
+        ] else ...[
+          Builder(
+            builder: (context) {
+              final cart = Provider.of<CartProvider>(context);
+              final cartQty = cart.getProductTotalQuantity(product.id);
+
+              return Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () => HZProductActionDialog.show(
+                        context,
+                        product: product,
+                        isWhatsApp: true,
+                      ),
+                      icon: const Icon(Icons.chat_outlined, color: Colors.white, size: 18),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF25D366),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        elevation: 0,
+                      ),
+                      label: Text(
+                        'INQUIRE',
+                        style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13, letterSpacing: 0.5),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: cartQty > 0
+                        ? HZQuantityStepper(
+                            product: product,
+                            height: 48.0,
+                            isSmall: false,
+                          )
+                        : ElevatedButton.icon(
+                            onPressed: () => HZProductActionDialog.show(
+                              context,
+                              product: product,
+                              isWhatsApp: false,
+                            ),
+                            icon: const Icon(Icons.add_shopping_cart_outlined, color: Colors.white, size: 18),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.black,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              elevation: 0,
+                            ),
+                            label: Text(
+                              'ADD TO CART',
+                              style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13, letterSpacing: 0.5),
+                            ),
+                          ),
+                  ),
+                ],
+              );
+            }
+          ),
+        ],
 
         const SizedBox(height: 14),
 
@@ -465,102 +594,4 @@ class ProductDetailScreen extends StatelessWidget {
   }
 }
 
-class _ProductDetailInfoWidget extends StatefulWidget {
-  final Product product;
-  final BusinessProvider business;
 
-  const _ProductDetailInfoWidget({
-    required this.product,
-    required this.business,
-  });
-
-  @override
-  State<_ProductDetailInfoWidget> createState() => _ProductDetailInfoWidgetState();
-}
-
-class _ProductDetailInfoWidgetState extends State<_ProductDetailInfoWidget> {
-  String? _selectedSize;
-
-  @override
-  void initState() {
-    super.initState();
-    if (widget.product.availableSizes.isNotEmpty) {
-      _selectedSize = widget.product.availableSizes.first;
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (widget.product.availableSizes.isNotEmpty) ...[
-          Row(
-            children: [
-              Text(
-                'SELECT SIZE:',
-                style: GoogleFonts.inter(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1.5,
-                  color: const Color(0xFF111111),
-                ),
-              ),
-              if (_selectedSize != null)
-                Padding(
-                  padding: const EdgeInsets.only(left: 8),
-                  child: Text(
-                    '($_selectedSize)',
-                    style: GoogleFonts.inter(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: const Color(0xFF666666),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: widget.product.availableSizes.map((size) {
-              final isSelected = size == _selectedSize;
-              return InkWell(
-                onTap: () => setState(() => _selectedSize = size),
-                borderRadius: BorderRadius.circular(8),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: isSelected ? const Color(0xFF000000) : Colors.white,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: isSelected ? const Color(0xFF000000) : const Color(0xFFCCCCCC),
-                      width: isSelected ? 1.5 : 1.0,
-                    ),
-                  ),
-                  child: Text(
-                    size,
-                    style: GoogleFonts.inter(
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                      color: isSelected ? Colors.white : const Color(0xFF111111),
-                    ),
-                  ),
-                ),
-              );
-            }).toList(),
-          ),
-          const SizedBox(height: 24),
-        ],
-
-        // WhatsApp Inquiry Button with Selected Size
-        WhatsAppInquiryButton(
-          product: widget.product,
-          isFullWidth: true,
-          selectedSize: _selectedSize,
-        ),
-      ],
-    );
-  }
-}

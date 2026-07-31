@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'cloudinary_image.dart';
+import 'dart:math';
 
 class Product {
   final String id;
@@ -17,6 +18,8 @@ class Product {
   final bool isOffer;
   final List<String> tags;
   final List<String> availableSizes;
+  final Map<String, double> sizePrices;
+  final String uniqueProductCode;
   final DateTime createdAt;
 
   Product({
@@ -35,6 +38,8 @@ class Product {
     this.isOffer = false,
     this.tags = const [],
     this.availableSizes = const [],
+    this.sizePrices = const {},
+    this.uniqueProductCode = '',
     DateTime? createdAt,
   }) : createdAt = createdAt ?? DateTime.now();
 
@@ -63,7 +68,88 @@ class Product {
         .replaceAll(RegExp(r'[^a-z0-9\s-]'), '')
         .replaceAll(RegExp(r'\s+'), '-')
         .replaceAll(RegExp(r'-+'), '-');
-    return cleanTitle.endsWith('-') ? cleanTitle.substring(0, cleanTitle.length - 1) : cleanTitle;
+    final titleSlug = cleanTitle.endsWith('-') ? cleanTitle.substring(0, cleanTitle.length - 1) : cleanTitle;
+
+    final String skuPart = sku.trim().isNotEmpty
+        ? sku.trim().toLowerCase().replaceAll(RegExp(r'[^a-z0-9\s-]'), '').replaceAll(RegExp(r'\s+'), '-').replaceAll(RegExp(r'-+'), '-')
+        : '';
+
+    final codePart = uniqueProductCode.toLowerCase().trim();
+
+    if (skuPart.isNotEmpty) {
+      if (codePart.isNotEmpty) {
+        return '$titleSlug-$skuPart-$codePart';
+      }
+      return '$titleSlug-$skuPart';
+    } else {
+      if (codePart.isNotEmpty) {
+        return '$titleSlug-$codePart';
+      }
+      return titleSlug;
+    }
+  }
+
+  Product copyWith({
+    String? id,
+    String? title,
+    String? sku,
+    String? departmentId,
+    String? categoryId,
+    String? subcategoryId,
+    String? price,
+    double? offerPrice,
+    List<CloudinaryImage>? images,
+    String? description,
+    Map<String, String>? specifications,
+    bool? isFeatured,
+    bool? isOffer,
+    List<String>? tags,
+    List<String>? availableSizes,
+    Map<String, double>? sizePrices,
+    DateTime? createdAt,
+    String? uniqueProductCode,
+  }) {
+    return Product(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      sku: sku ?? this.sku,
+      departmentId: departmentId ?? this.departmentId,
+      categoryId: categoryId ?? this.categoryId,
+      subcategoryId: subcategoryId ?? this.subcategoryId,
+      price: price ?? this.price,
+      offerPrice: offerPrice ?? this.offerPrice,
+      images: images ?? this.images,
+      description: description ?? this.description,
+      specifications: specifications ?? this.specifications,
+      isFeatured: isFeatured ?? this.isFeatured,
+      isOffer: isOffer ?? this.isOffer,
+      tags: tags ?? this.tags,
+      availableSizes: availableSizes ?? this.availableSizes,
+      sizePrices: sizePrices ?? this.sizePrices,
+      createdAt: createdAt ?? this.createdAt,
+      uniqueProductCode: uniqueProductCode ?? this.uniqueProductCode,
+    );
+  }
+
+  double getPriceForSize(String size) {
+    if (sizePrices.containsKey(size)) {
+      return sizePrices[size]!;
+    }
+    final clean = price.replaceAll(RegExp(r'[^\d.]'), '');
+    return double.tryParse(clean) ?? 0.0;
+  }
+
+  double getActivePriceForSize(String size) {
+    final double base = getPriceForSize(size);
+    if (isOffer && offerPrice != null && offerPrice! > 0) {
+      final double defaultBase = getPriceForSize('');
+      if (defaultBase > 0) {
+        final double discountRatio = offerPrice! / defaultBase;
+        return base * discountRatio;
+      }
+      return offerPrice!;
+    }
+    return base;
   }
 
   factory Product.fromMap(Map<String, dynamic> map, String id) {
@@ -110,6 +196,16 @@ class Product {
       return [];
     }
 
+    Map<String, double> parseSizePrices(dynamic val) {
+      if (val is Map) {
+        return val.map((key, value) {
+          final doubleVal = value is num ? value.toDouble() : double.tryParse(value.toString()) ?? 0.0;
+          return MapEntry(key.toString(), doubleVal);
+        });
+      }
+      return {};
+    }
+
     return Product(
       id: id,
       title: map['title'] ?? '',
@@ -126,6 +222,8 @@ class Product {
       isOffer: map['isOffer'] ?? false,
       tags: List<String>.from(map['tags'] ?? []),
       availableSizes: List<String>.from(map['availableSizes'] ?? []),
+      sizePrices: parseSizePrices(map['sizePrices']),
+      uniqueProductCode: map['uniqueProductCode'] ?? '',
       createdAt: parseDate(map['createdAt']),
     );
   }
@@ -146,7 +244,9 @@ class Product {
       'isOffer': isOffer,
       'tags': tags,
       'availableSizes': availableSizes,
-      'createdAt': Timestamp.fromDate(createdAt),
+      'sizePrices': sizePrices,
+      'uniqueProductCode': uniqueProductCode,
+      'createdAt': createdAt != null ? Timestamp.fromDate(createdAt) : FieldValue.serverTimestamp(),
     };
   }
 }

@@ -88,7 +88,7 @@ class HZFooter extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        '© ${DateTime.now().year} SHREE MEENAKSHI TEXTILES. ALL RIGHTS RESERVED.',
+                        '© ${DateTime.now().year} SREE MEENAKSHI TEXTILES. ALL RIGHTS RESERVED.',
                         style: GoogleFonts.inter(
                           fontSize: 11,
                           letterSpacing: 1.0,
@@ -109,7 +109,7 @@ class HZFooter extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '© ${DateTime.now().year} SHREE MEENAKSHI TEXTILES. ALL RIGHTS RESERVED.',
+                        '© ${DateTime.now().year} SREE MEENAKSHI TEXTILES. ALL RIGHTS RESERVED.',
                         style: GoogleFonts.inter(
                           fontSize: 10,
                           letterSpacing: 0.8,
@@ -157,7 +157,7 @@ class HZFooter extends StatelessWidget {
             const SizedBox(width: 12),
             Expanded(
               child: Text(
-                'SHREE MEENAKSHI TEXTILES',
+                'SREE MEENAKSHI TEXTILES',
                 style: GoogleFonts.cormorantGaramond(
                   fontSize: isDesktop ? 24 : 18,
                   fontWeight: FontWeight.bold,

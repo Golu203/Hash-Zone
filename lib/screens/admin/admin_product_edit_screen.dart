@@ -15,6 +15,13 @@ import '../../repositories/image_upload_repository.dart';
 import '../../widgets/upload_progress_widget.dart';
 import '../../widgets/image_cropper_modal.dart';
 
+class SizePriceRow {
+  String size;
+  final TextEditingController priceController;
+  SizePriceRow({required this.size, required String price})
+      : priceController = TextEditingController(text: price);
+}
+
 class AdminProductEditScreen extends ConsumerStatefulWidget {
   final String? productId;
 
@@ -55,6 +62,7 @@ class _AdminProductEditScreenState extends ConsumerState<AdminProductEditScreen>
   }
 
   List<String> _selectedSizes = [];
+  final List<SizePriceRow> _sizePrices = [];
 
   void _loadProductData() {
     final uploadRepo = ref.read(imageUploadRepositoryProvider);
@@ -79,6 +87,16 @@ class _AdminProductEditScreenState extends ConsumerState<AdminProductEditScreen>
         _isOffer = p.isOffer;
         _specifications = Map<String, String>.from(p.specifications);
         _selectedSizes = List<String>.from(p.availableSizes);
+        _sizePrices.clear();
+        for (final size in p.availableSizes) {
+          final priceVal = p.sizePrices[size];
+          _sizePrices.add(
+            SizePriceRow(
+              size: size,
+              price: priceVal != null ? priceVal.toStringAsFixed(0) : '',
+            ),
+          );
+        }
 
         // Load existing images into upload repository
         uploadRepo.initExistingImages(p.images);
@@ -97,6 +115,9 @@ class _AdminProductEditScreenState extends ConsumerState<AdminProductEditScreen>
     _tagsController.dispose();
     _specKeyController.dispose();
     _specValController.dispose();
+    for (final row in _sizePrices) {
+      row.priceController.dispose();
+    }
     super.dispose();
   }
 
@@ -216,6 +237,18 @@ class _AdminProductEditScreenState extends ConsumerState<AdminProductEditScreen>
         ? double.tryParse(_offerPriceController.text.trim())
         : null;
 
+    final List<String> availableSizes = [];
+    final Map<String, double> sizePrices = {};
+    for (final row in _sizePrices) {
+      if (row.size.isNotEmpty) {
+        availableSizes.add(row.size);
+        final doublePrice = double.tryParse(row.priceController.text.trim());
+        if (doublePrice != null && doublePrice > 0) {
+          sizePrices[row.size] = doublePrice;
+        }
+      }
+    }
+
     final product = Product(
       id: widget.productId ?? '',
       title: _titleController.text.trim(),
@@ -231,7 +264,8 @@ class _AdminProductEditScreenState extends ConsumerState<AdminProductEditScreen>
       isFeatured: _isFeatured,
       isOffer: _isOffer,
       tags: tags,
-      availableSizes: _selectedSizes,
+      availableSizes: availableSizes,
+      sizePrices: sizePrices,
     );
 
     try {
@@ -646,77 +680,161 @@ class _AdminProductEditScreenState extends ConsumerState<AdminProductEditScreen>
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Row(
-                                  children: [
-                                    Text(
-                                      'AVAILABLE SIZES FOR THIS PRODUCT',
-                                      style: GoogleFonts.inter(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold,
-                                        letterSpacing: 1.2,
-                                        color: isSizeEnabled ? const Color(0xFF111111) : Colors.red[900],
-                                      ),
-                                    ),
-                                    if (!isSizeEnabled)
-                                      Container(
-                                        margin: const EdgeInsets.only(left: 10),
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                        decoration: BoxDecoration(
-                                          color: Colors.red[100],
-                                          borderRadius: BorderRadius.circular(6),
-                                          border: Border.all(color: Colors.red[700]!),
-                                        ),
-                                        child: Text(
-                                          'OFF / SIZES DISABLED',
-                                          style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.red[900]),
-                                        ),
-                                      ),
-                                  ],
+                                Text(
+                                  'PRODUCT SIZE & CUSTOM PRICING',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 1.2,
+                                    color: isSizeEnabled ? const Color(0xFF111111) : Colors.red[900],
+                                  ),
                                 ),
-                                if (isSizeEnabled && _selectedSizes.isNotEmpty)
-                                  TextButton(
-                                    onPressed: () => setState(() => _selectedSizes.clear()),
-                                    child: Text('Clear Sizes', style: GoogleFonts.inter(fontSize: 11, color: const Color(0xFF666666))),
+                                if (!isSizeEnabled)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.red[100],
+                                      borderRadius: BorderRadius.circular(6),
+                                      border: Border.all(color: Colors.red[700]!),
+                                    ),
+                                    child: Text(
+                                      'SIZES DISABLED',
+                                      style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.red[900]),
+                                    ),
                                   ),
                               ],
                             ),
                             if (!isSizeEnabled) ...[
-                              const SizedBox(height: 6),
+                              const SizedBox(height: 12),
                               Text(
-                                'Sizes are turned OFF for ${dept.name}. Toggle sizes ON in Taxonomies to enable size selection.',
+                                'Sizes are turned OFF for ${dept?.name}. Toggle sizes ON in Taxonomies to enable size selection.',
                                 style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.red[900]),
                               ),
-                            ],
-                            const SizedBox(height: 12),
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              children: presetSizes.map((size) {
-                                final isSelected = isSizeEnabled && _selectedSizes.contains(size);
-                                return FilterChip(
-                                  label: Text(size),
-                                  selected: isSelected,
-                                  selectedColor: const Color(0xFF000000),
-                                  disabledColor: const Color(0xFFE5E5E5),
-                                  checkmarkColor: Colors.white,
-                                  labelStyle: TextStyle(
-                                    color: isSelected ? Colors.white : const Color(0xFF333333),
-                                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                            ] else ...[
+                              const SizedBox(height: 16),
+                              if (_sizePrices.isEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  child: Text(
+                                    'No sizes added yet. Click "+ Add Size" below to add sizes and optional custom prices.',
+                                    style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF666666)),
                                   ),
-                                  onSelected: isSizeEnabled
-                                      ? (val) {
-                                          setState(() {
-                                            if (val) {
-                                              _selectedSizes.add(size);
-                                            } else {
-                                              _selectedSizes.remove(size);
-                                            }
-                                          });
-                                        }
-                                      : null,
-                                );
-                              }).toList(),
-                            ),
+                                )
+                              else
+                                ListView.separated(
+                                  shrinkWrap: true,
+                                  physics: const NeverScrollableScrollPhysics(),
+                                  itemCount: _sizePrices.length,
+                                  separatorBuilder: (context, index) => const SizedBox(height: 12),
+                                  itemBuilder: (context, index) {
+                                    final row = _sizePrices[index];
+                                    final currentSelected = _sizePrices.map((r) => r.size).where((s) => s.isNotEmpty).toList();
+
+                                    return Row(
+                                      children: [
+                                        // Searchable Size Dropdown
+                                        Expanded(
+                                          flex: 2,
+                                          child: Container(
+                                            decoration: BoxDecoration(
+                                              border: Border.all(color: const Color(0xFFCCCCCC)),
+                                              borderRadius: BorderRadius.circular(8),
+                                            ),
+                                            child: Autocomplete<String>(
+                                              optionsBuilder: (TextEditingValue textEditingValue) {
+                                                final filteredPreset = presetSizes.where((s) {
+                                                  return !currentSelected.contains(s) || s == row.size;
+                                                }).toList();
+
+                                                if (textEditingValue.text.isEmpty) {
+                                                  return filteredPreset;
+                                                }
+                                                return filteredPreset.where((String option) {
+                                                  return option.toLowerCase().contains(textEditingValue.text.toLowerCase());
+                                                });
+                                              },
+                                              onSelected: (String selection) {
+                                                setState(() {
+                                                  row.size = selection;
+                                                });
+                                              },
+                                              fieldViewBuilder: (context, textEditingController, focusNode, onFieldSubmitted) {
+                                                // Keep controller updated with initial value if any
+                                                if (textEditingController.text != row.size) {
+                                                  textEditingController.text = row.size;
+                                                }
+                                                return TextFormField(
+                                                  controller: textEditingController,
+                                                  focusNode: focusNode,
+                                                  style: GoogleFonts.inter(fontSize: 13, color: Colors.black),
+                                                  decoration: const InputDecoration(
+                                                    hintText: 'Select or Search Size',
+                                                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                                    border: InputBorder.none,
+                                                  ),
+                                                  onChanged: (val) {
+                                                    row.size = val.trim();
+                                                  },
+                                                );
+                                              },
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+
+                                        // Optional Custom Price Input
+                                        Expanded(
+                                          flex: 2,
+                                          child: TextFormField(
+                                            controller: row.priceController,
+                                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                            style: GoogleFonts.inter(fontSize: 13, color: Colors.black),
+                                            decoration: const InputDecoration(
+                                              hintText: 'Price (Optional)',
+                                              prefixText: '₹ ',
+                                              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                              border: OutlineInputBorder(),
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+
+                                        // Delete Button
+                                        IconButton(
+                                          icon: const Icon(Icons.delete_outline, color: Colors.red),
+                                          onPressed: () {
+                                            setState(() {
+                                              row.priceController.dispose();
+                                              _sizePrices.removeAt(index);
+                                            });
+                                          },
+                                        ),
+                                      ],
+                                    );
+                                  },
+                                ),
+                              const SizedBox(height: 16),
+                              SizedBox(
+                                width: double.infinity,
+                                child: OutlinedButton.icon(
+                                  onPressed: () {
+                                    setState(() {
+                                      _sizePrices.add(SizePriceRow(size: '', price: ''));
+                                    });
+                                  },
+                                  style: OutlinedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(vertical: 12),
+                                    side: const BorderSide(color: Colors.black, width: 1.5),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                  ),
+                                  icon: const Icon(Icons.add, color: Colors.black, size: 18),
+                                  label: Text(
+                                    'ADD SIZE',
+                                    style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: Colors.black, fontSize: 12),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ],
                         ),
                       ),

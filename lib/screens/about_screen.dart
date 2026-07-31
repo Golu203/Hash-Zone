@@ -1,9 +1,14 @@
+import 'dart:convert';
+import 'dart:html' as html;
+import 'dart:ui_web' as ui_web;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import '../widgets/footer.dart';
 import '../widgets/navbar.dart';
-
 import '../utils/seo_helper.dart';
+import '../providers/supply_network_provider.dart';
+import '../models/supply_state.dart';
 
 class AboutScreen extends StatelessWidget {
   const AboutScreen({super.key});
@@ -298,6 +303,10 @@ class AboutScreen extends StatelessWidget {
                     ),
 
                     const SizedBox(height: 80),
+                    
+                    _buildSupplyNetworkSection(context, isDesktop),
+
+                    const SizedBox(height: 80),
                   ],
                 ),
               ),
@@ -498,6 +507,345 @@ class AboutScreen extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Widget _buildSupplyNetworkSection(BuildContext context, bool isDesktop) {
+    final provider = Provider.of<SupplyNetworkProvider>(context);
+    final activeStates = provider.activeStates;
+
+    final mapWidget = Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 580),
+        child: AspectRatio(
+          aspectRatio: 3 / 4,
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.black, width: 2.0),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: Builder(
+              builder: (context) {
+                final String viewType = 'leaflet-map-${activeStates.hashCode}';
+                ui_web.platformViewRegistry.registerViewFactory(
+                  viewType,
+                  (int viewId) {
+                    final iframe = html.IFrameElement()
+                      ..style.width = '100%'
+                      ..style.height = '100%'
+                      ..style.border = 'none'
+                      ..srcdoc = _generateMapHtml(activeStates);
+                    return iframe;
+                  },
+                );
+                return HtmlElementView(viewType: viewType);
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final instructionWidget = Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF9F9FA),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.black, width: 1.5),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.info_outline, size: 18, color: Colors.black),
+              const SizedBox(width: 8),
+              Text(
+                'Our Supply Network',
+                style: GoogleFonts.inter(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'Click on any pin or state label to view the cities where HashZone currently provides supply services.',
+            style: GoogleFonts.inter(
+              fontSize: 12,
+              height: 1.5,
+              color: const Color(0xFF444444),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Heading
+        Text(
+          'Our Current Supply Network',
+          style: GoogleFonts.cormorantGaramond(
+            fontSize: isDesktop ? 34 : 26,
+            fontWeight: FontWeight.bold,
+            color: Colors.black,
+          ),
+        ),
+        const SizedBox(height: 12),
+        // Subheading
+        Text(
+          'We are currently supplying garments across multiple states and cities throughout India and continue to grow our presence.',
+          style: GoogleFonts.inter(
+            fontSize: 14,
+            height: 1.6,
+            color: const Color(0xFF555555),
+          ),
+        ),
+        const SizedBox(height: 32),
+
+        // Map Frame / Empty state
+        if (provider.isLoading)
+          Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 580),
+              child: AspectRatio(
+                aspectRatio: 3 / 4,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF9F9FA),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.black, width: 2.0),
+                  ),
+                  child: const Center(
+                    child: CircularProgressIndicator(color: Colors.black),
+                  ),
+                ),
+              ),
+            ),
+          )
+        else if (activeStates.isEmpty)
+          Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 580),
+              child: AspectRatio(
+                aspectRatio: 3 / 4,
+                child: Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF9F9FA),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.black, width: 2.0),
+                  ),
+                  child: Center(
+                    child: Text(
+                      'Hashzone is expanding its supply network. Locations will appear here soon.',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.inter(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.black54,
+                        height: 1.5,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          )
+        else if (isDesktop)
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                flex: 4,
+                child: mapWidget,
+              ),
+              const SizedBox(width: 32),
+              Expanded(
+                flex: 3,
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 24),
+                  child: instructionWidget,
+                ),
+              ),
+            ],
+          )
+        else
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              instructionWidget,
+              const SizedBox(height: 24),
+              mapWidget,
+            ],
+          ),
+      ],
+    );
+  }
+
+  String _generateMapHtml(List<SupplyState> activeStates) {
+    final statesJson = activeStates.map((s) => {
+      'state': s.state,
+      'latitude': s.latitude,
+      'longitude': s.longitude,
+      'cities': s.cities,
+    }).toList();
+
+    final dataString = json.encode(statesJson);
+
+    return '''
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    body { margin: 0; padding: 0; background: #FFFFFF; }
+    #map { width: 100vw; height: 100vh; background: #FFFFFF; }
+    
+    .leaflet-bar { border: 1.5px solid #000 !important; box-shadow: none !important; border-radius: 6px !important; }
+    .leaflet-bar a { border-bottom: 1px solid #ccc !important; color: #000 !important; }
+    .leaflet-bar a:first-child { border-top-left-radius: 4px !important; border-top-right-radius: 4px !important; }
+    .leaflet-bar a:last-child { border-bottom-left-radius: 4px !important; border-bottom-right-radius: 4px !important; border-bottom: none !important; }
+    
+    .state-label {
+      background: #000000 !important;
+      border: 1px solid #000000 !important;
+      border-radius: 4px !important;
+      color: #ffffff !important;
+      font-family: 'Inter', sans-serif !important;
+      font-size: 10px !important;
+      font-weight: 700 !important;
+      letter-spacing: 0.5px !important;
+      padding: 6px 10px !important;
+      white-space: nowrap !important;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.15) !important;
+      cursor: pointer !important;
+      pointer-events: auto !important;
+    }
+    .leaflet-tooltip-right:before {
+      border-right-color: #000000 !important;
+    }
+    
+    .leaflet-popup-content-wrapper {
+      background: #ffffff;
+      border: 2px solid #000000;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      font-family: 'Inter', sans-serif;
+      color: #000000;
+      padding: 6px;
+    }
+    .leaflet-popup-tip {
+      background: #ffffff;
+      border: 2px solid #000000;
+      border-top: none;
+      border-left: none;
+    }
+    .popup-title {
+      font-weight: 800;
+      font-size: 13px;
+      border-bottom: 1.5px solid #000000;
+      padding-bottom: 4px;
+      margin-bottom: 6px;
+      letter-spacing: 0.5px;
+    }
+    .city-list {
+      margin: 0;
+      padding-left: 14px;
+      font-size: 12px;
+      color: #333;
+      line-height: 1.4;
+    }
+    .city-list li {
+      margin-bottom: 2px;
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <script>
+    var map = L.map('map', {
+      zoomControl: true,
+      scrollWheelZoom: false,
+      doubleClickZoom: true,
+      touchZoom: true
+    });
+
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+      attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+      subdomains: 'abcd',
+      maxZoom: 18
+    }).addTo(map);
+
+    var supplyNetwork = $dataString;
+
+    supplyNetwork.forEach(function(item) {
+      if (item.latitude && item.longitude) {
+        var customIcon = L.divIcon({
+          html: '<div style="width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; cursor: pointer;"><div style="background-color: #000; width: 12px; height: 12px; border-radius: 50%; border: 2.5px solid #fff; box-shadow: 0 0 5px rgba(0,0,0,0.4);"></div></div>',
+          className: 'custom-pin-icon',
+          iconSize: [24, 24],
+          iconAnchor: [12, 12]
+        });
+
+        var marker = L.marker([item.latitude, item.longitude], { icon: customIcon }).addTo(map);
+
+        var tooltip = marker.bindTooltip(item.state, {
+          permanent: true,
+          direction: 'right',
+          offset: [12, 0],
+          className: 'state-label',
+          interactive: true
+        });
+
+        // Set click listener on tooltip label to open marker popup
+        tooltip.on('click', function(e) {
+          L.DomEvent.stopPropagation(e);
+          marker.openPopup();
+        });
+
+        var citiesHtml = '<div style="font-size:10px; color:#777; text-transform:uppercase; font-weight:700; letter-spacing:1px; margin-bottom:2px;">HashZone Supplies Here</div>';
+        citiesHtml += '<div class="popup-title" style="margin-bottom:6px;">📍 ' + item.state.toUpperCase() + '</div>';
+        if (item.cities && item.cities.length > 0) {
+          citiesHtml += '<div style="font-size:9px; color:#888; margin-top:6px; margin-bottom:4px; font-weight:bold; letter-spacing:0.5px;">CURRENTLY SUPPLYING IN:</div>';
+          citiesHtml += '<ul class="city-list" style="margin: 0; padding-left: 12px;">';
+          item.cities.forEach(function(city) {
+            citiesHtml += '<li>' + city + '</li>';
+          });
+          citiesHtml += '</ul>';
+        }
+
+        marker.bindPopup(citiesHtml);
+      }
+    });
+
+    // Tight focus on Indian mainland (covers 8.0N to 35.8N, 68.5E to 97.3E) with minimal surround visible
+    var indiaBounds = [
+      [8.0, 68.5],
+      [35.8, 97.3]
+    ];
+    map.fitBounds(indiaBounds, { padding: [5, 5] });
+    setTimeout(function() {
+      var currentZoom = map.getZoom();
+      map.setZoom(currentZoom + 1);
+      
+      // Shift initial center very slightly to the left (-4.0 degrees West)
+      var newCenter = map.getCenter();
+      map.setView([newCenter.lat, newCenter.lng - 4.0], currentZoom + 1);
+    }, 50);
+  </script>
+</body>
+</html>
+''';
   }
 }
 

@@ -5,9 +5,15 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../models/product.dart';
 import '../providers/catalog_provider.dart';
+import '../providers/business_provider.dart';
+import '../providers/cart_provider.dart';
+import 'product_action_dialog.dart';
 import 'cloudinary_image_widget.dart';
 import 'whatsapp_button.dart';
 import 'context_menu_wrapper.dart';
+import 'size_price_table.dart';
+import 'quantity_stepper.dart';
+import 'manage_cart_dialog.dart';
 
 /// Canonical size order: letter sizes first (XS→3XL), then Free Size, then numeric ascending.
 const _kSizeOrder = [
@@ -222,96 +228,11 @@ class _ProductCardState extends State<ProductCard> {
 
                               SizedBox(height: isSmall ? 2 : 4),
 
-                              // ── Price — FIXED HEIGHT keeps all cards aligned ─
-                              SizedBox(
-                                height: isSmall ? 26 : 32,
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    if (widget.product.isOffer &&
-                                        widget.product.offerPrice != null &&
-                                        widget.product.offerPrice! > 0) ...[
-                                      Text(
-                                        currencyFormatter.format(
-                                            widget.product.offerPrice!),
-                                        style: GoogleFonts.inter(
-                                          fontSize: isSmall ? 11 : 14,
-                                          fontWeight: FontWeight.bold,
-                                          color: const Color(0xFFD32F2F),
-                                        ),
-                                      ),
-                                      if (widget.product.price
-                                          .trim()
-                                          .isNotEmpty)
-                                        Text(
-                                          widget.product.price,
-                                          style: GoogleFonts.inter(
-                                            fontSize: 8,
-                                            decoration:
-                                                TextDecoration.lineThrough,
-                                            color: const Color(0xFF999999),
-                                          ),
-                                        ),
-                                    ] else if (widget.product.price
-                                        .trim()
-                                        .isNotEmpty) ...[
-                                      Text(
-                                        widget.product.price,
-                                        style: GoogleFonts.inter(
-                                          fontSize: isSmall ? 11 : 14,
-                                          fontWeight: FontWeight.bold,
-                                          color: const Color(0xFF111111),
-                                        ),
-                                      ),
-                                    ] else ...[
-                                      Text(
-                                        'Price on Inquiry',
-                                        style: GoogleFonts.inter(
-                                          fontSize: isSmall ? 10 : 12,
-                                          fontWeight: FontWeight.w500,
-                                          color: const Color(0xFF888888),
-                                          fontStyle: FontStyle.italic,
-                                        ),
-                                      ),
-                                    ],
-                                  ],
-                                ),
-                              ),
+                              const SizedBox(height: 4),
 
-                              SizedBox(height: isSmall ? 2 : 4),
-
-                              // ── Sizes — ALL sizes shown sorted small→big ────
-                              Wrap(
-                                spacing: isSmall ? 2 : 4,
-                                runSpacing: isSmall ? 2 : 3,
-                                children: (_sortedSizes(
-                                            widget.product.availableSizes
-                                                .isNotEmpty
-                                        ? widget.product.availableSizes
-                                        : ['Free Size']))
-                                    .map(
-                                      (s) => Container(
-                                        padding: EdgeInsets.symmetric(
-                                          horizontal: isSmall ? 4 : 6,
-                                          vertical: isSmall ? 1 : 2,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xFFF0F0F2),
-                                          borderRadius:
-                                              BorderRadius.circular(3),
-                                        ),
-                                        child: Text(
-                                          s,
-                                          style: GoogleFonts.inter(
-                                            fontSize: isSmall ? 7.5 : 9,
-                                            color: const Color(0xFF555555),
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                      ),
-                                    )
-                                    .toList(),
+                              HZSizePriceTable(
+                                product: widget.product,
+                                isSmall: isSmall,
                               ),
 
                               // Spacer pushes button to bottom — stays INSIDE card
@@ -350,10 +271,90 @@ class _CompactInquiryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return WhatsAppInquiryButton(
-      product: product,
-      isFullWidth: true,
-      compact: isSmall,
+    final business = Provider.of<BusinessProvider>(context);
+    final cart = Provider.of<CartProvider>(context);
+
+    if (!business.settings.enableShoppingCart) {
+      return SizedBox(
+        width: double.infinity,
+        child: ElevatedButton.icon(
+          onPressed: () => HZProductActionDialog.show(context, product: product, isWhatsApp: true),
+          icon: const Icon(Icons.chat_outlined, color: Colors.white, size: 14),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF25D366),
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(6),
+            ),
+            elevation: 0,
+          ),
+          label: Text(
+            'INQUIRE',
+            style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: isSmall ? 10 : 12),
+          ),
+        ),
+      );
+    }
+
+    final int cartQty = cart.getProductTotalQuantity(product.id);
+    if (cartQty > 0) {
+      return GestureDetector(
+        onTap: () => HZManageCartDialog.show(context, product: product),
+        child: AbsorbPointer(
+          child: HZQuantityStepper(
+            product: product,
+            height: isSmall ? 28 : 36,
+            isSmall: isSmall,
+          ),
+        ),
+      );
+    }
+
+    return Row(
+      children: [
+        // WhatsApp Action Dialog Trigger
+        Expanded(
+          child: ElevatedButton(
+            onPressed: () => HZProductActionDialog.show(context, product: product, isWhatsApp: true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF25D366),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(6),
+              ),
+              elevation: 0,
+            ),
+            child: Icon(
+              Icons.chat_outlined,
+              color: Colors.white,
+              size: isSmall ? 13 : 16,
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        // Add to Cart Action Dialog Trigger
+        Expanded(
+          child: ElevatedButton(
+            onPressed: () => HZProductActionDialog.show(context, product: product, isWhatsApp: false),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.black,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(6),
+              ),
+              elevation: 0,
+            ),
+            child: Icon(
+              Icons.add_shopping_cart_outlined,
+              color: Colors.white,
+              size: isSmall ? 13 : 16,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

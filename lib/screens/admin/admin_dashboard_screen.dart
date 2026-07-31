@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../providers/catalog_provider.dart';
+import '../../providers/supply_network_provider.dart';
 import '../../services/auth_service.dart';
 
 class AdminDashboardScreen extends StatelessWidget {
@@ -11,6 +12,7 @@ class AdminDashboardScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final catalog = Provider.of<CatalogProvider>(context);
+    final supplyNetwork = Provider.of<SupplyNetworkProvider>(context);
     final isDesktop = MediaQuery.of(context).size.width >= 900;
 
     return Scaffold(
@@ -118,15 +120,16 @@ class AdminDashboardScreen extends StatelessWidget {
             GridView.count(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              crossAxisCount: isDesktop ? 4 : 2,
-              crossAxisSpacing: isDesktop ? 20 : 12,
-              mainAxisSpacing: isDesktop ? 20 : 12,
-              childAspectRatio: isDesktop ? 1.6 : 2.2,
+              crossAxisCount: isDesktop ? 5 : 2,
+              crossAxisSpacing: isDesktop ? 16 : 12,
+              mainAxisSpacing: isDesktop ? 16 : 12,
+              childAspectRatio: isDesktop ? 1.3 : 2.2,
               children: [
                 _kpiCard(context, 'TOTAL PRODUCTS', catalog.products.length.toString(), Icons.checkroom),
                 _kpiCard(context, 'SEGMENTS', catalog.departments.length.toString(), Icons.domain),
                 _kpiCard(context, 'CATEGORIES', catalog.categories.length.toString(), Icons.category),
                 _kpiCard(context, 'HERO BANNERS', catalog.heroBanners.length.toString(), Icons.view_carousel),
+                _kpiCard(context, 'SUPPLY STATES', supplyNetwork.states.length.toString(), Icons.map_outlined),
               ],
             ),
 
@@ -181,6 +184,13 @@ class AdminDashboardScreen extends StatelessWidget {
                         icon: Icons.settings_outlined,
                         route: '/admin/settings',
                       ),
+                      _moduleCard(
+                        context,
+                        title: 'Supply Network',
+                        subtitle: 'Add, edit, or delete cities and states in the India supply network map.',
+                        icon: Icons.map_outlined,
+                        route: '/admin/supply-network',
+                      ),
                     ],
                   )
                 : Column(
@@ -215,6 +225,14 @@ class AdminDashboardScreen extends StatelessWidget {
                         subtitle: 'Edit WhatsApp number, call number, store address, and opening hours.',
                         icon: Icons.settings_outlined,
                         route: '/admin/settings',
+                      ),
+                      const SizedBox(height: 16),
+                      _moduleCard(
+                        context,
+                        title: 'Supply Network',
+                        subtitle: 'Add, edit, or delete cities and states in the India supply network map.',
+                        icon: Icons.map_outlined,
+                        route: '/admin/supply-network',
                       ),
                     ],
                   ),

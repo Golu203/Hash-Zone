@@ -3,6 +3,10 @@
   "cleanUrls": true,
   "rewrites": [
     {
+      "source": "/product/:id",
+      "destination": "/api/product-preview?id=:id"
+    },
+    {
       "source": "/((?!.*\\.).*)",
       "destination": "/index.html"
     }
