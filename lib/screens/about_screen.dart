@@ -443,28 +443,30 @@ class AboutScreen extends StatelessWidget {
           Text(
             year,
             style: GoogleFonts.cormorantGaramond(
-              fontSize: 42,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            title,
-            style: GoogleFonts.inter(
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
+              fontSize: 48,
+              fontWeight: FontWeight.w900,
               letterSpacing: 1.5,
               color: Colors.white,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
+          Text(
+            title,
+            style: GoogleFonts.inter(
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 2.0,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 10),
           Text(
             desc,
             textAlign: TextAlign.center,
             style: GoogleFonts.inter(
-              fontSize: 12,
-              height: 1.5,
+              fontSize: 12.5,
+              height: 1.6,
+              fontWeight: FontWeight.w400,
               color: Colors.white70,
             ),
           ),

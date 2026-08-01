@@ -5,20 +5,23 @@ import '../models/product.dart';
 import '../providers/cart_provider.dart';
 
 class HZQuantityStepper extends StatefulWidget {
-  final Product product;
-  final double height;
+  final Product? product;
+  final String? size;
+  final int initialValue;
+  final Function(int value, bool isValid)? onChanged;
   final bool isSmall;
-  final int? value;
-  final ValueChanged<int>? onChanged;
+  final double height;
 
   const HZQuantityStepper({
     super.key,
-    required this.product,
-    this.height = 36.0,
-    this.isSmall = false,
-    this.value,
+    this.product,
+    this.size,
+    int? value,
+    int? initialValue,
     this.onChanged,
-  });
+    this.isSmall = false,
+    this.height = 36.0,
+  }) : initialValue = initialValue ?? value ?? 5;
 
   @override
   State<HZQuantityStepper> createState() => _HZQuantityStepperState();
@@ -27,13 +30,19 @@ class HZQuantityStepper extends StatefulWidget {
 class _HZQuantityStepperState extends State<HZQuantityStepper> {
   late TextEditingController _controller;
   late FocusNode _focusNode;
-  int _localVal = 1;
+  String? _errorText;
+  late int _currentVal;
 
   @override
   void initState() {
     super.initState();
-    _localVal = widget.value ?? 1;
-    _controller = TextEditingController(text: _localVal.toString());
+    _currentVal = widget.initialValue;
+    // Align to multiple of 5 initially if not zero
+    if (_currentVal > 0 && _currentVal % 5 != 0) {
+      _currentVal = (_currentVal ~/ 5) * 5;
+      if (_currentVal < 5) _currentVal = 5;
+    }
+    _controller = TextEditingController(text: _currentVal.toString());
     _focusNode = FocusNode();
     _focusNode.addListener(_onFocusChange);
   }
@@ -41,10 +50,15 @@ class _HZQuantityStepperState extends State<HZQuantityStepper> {
   @override
   void didUpdateWidget(covariant HZQuantityStepper oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.value != null && widget.value != oldWidget.value && !_focusNode.hasFocus) {
+    if (widget.initialValue != oldWidget.initialValue && !_focusNode.hasFocus) {
       setState(() {
-        _localVal = widget.value!;
-        _controller.text = _localVal.toString();
+        _currentVal = widget.initialValue;
+        if (_currentVal > 0 && _currentVal % 5 != 0) {
+          _currentVal = (_currentVal ~/ 5) * 5;
+          if (_currentVal < 5) _currentVal = 5;
+        }
+        _controller.text = _currentVal.toString();
+        _errorText = null;
       });
     }
   }
@@ -59,103 +73,202 @@ class _HZQuantityStepperState extends State<HZQuantityStepper> {
 
   void _onFocusChange() {
     if (!_focusNode.hasFocus) {
-      _submitValue();
+      _validateAndSubmit();
     }
   }
 
-  void _submitValue() {
-    final val = int.tryParse(_controller.text);
-    if (widget.onChanged != null) {
-      if (val != null && val >= 1) {
-        setState(() {
-          _localVal = val;
-        });
-        widget.onChanged!(val);
-      } else {
-        _controller.text = _localVal.toString();
+  void _validateAndSubmit() {
+    final text = _controller.text.trim();
+    if (text.isEmpty) {
+      setState(() {
+        _errorText = 'HashZone accepts wholesale orders only in multiples of 5 pieces.';
+      });
+      if (widget.onChanged != null) {
+        widget.onChanged!(_currentVal, false);
       }
-    } else {
+      return;
+    }
+
+    final val = int.tryParse(text);
+    if (val == null || val <= 0 || val % 5 != 0) {
+      setState(() {
+        _errorText = 'HashZone accepts wholesale orders only in multiples of 5 pieces.';
+      });
+      if (widget.onChanged != null) {
+        widget.onChanged!(val ?? 0, false);
+      }
+      return;
+    }
+
+    setState(() {
+      _currentVal = val;
+      _errorText = null;
+    });
+
+    _performUpdate(val, true);
+  }
+
+  void _performUpdate(int val, bool isValid) {
+    if (widget.onChanged != null) {
+      widget.onChanged!(val, isValid);
+    } else if (isValid) {
       final cart = Provider.of<CartProvider>(context, listen: false);
-      final totalQty = cart.getProductTotalQuantity(widget.product.id);
-      if (val != null) {
-        if (val != totalQty) {
-          cart.updateProductTotalQuantity(widget.product, val);
+      if (widget.product != null) {
+        if (widget.size != null) {
+          cart.updateQuantity(widget.product!.id, widget.size!, val);
+        } else {
+          cart.updateProductTotalQuantity(widget.product!, val);
         }
-      } else {
-        _controller.text = totalQty.toString();
       }
     }
+  }
+
+  void _increment() {
+    int nextVal = _currentVal + 5;
+    if (nextVal % 5 != 0) {
+      nextVal = ((nextVal ~/ 5) + 1) * 5;
+    }
+    setState(() {
+      _currentVal = nextVal;
+      _controller.text = _currentVal.toString();
+      _errorText = null;
+    });
+    _performUpdate(_currentVal, true);
+  }
+
+  void _decrement() {
+    if (_currentVal <= 5) {
+      // If decreased below 5, it goes to 0 (which removes or goes to minimum)
+      setState(() {
+        _currentVal = 0;
+        _controller.text = '0';
+        _errorText = null;
+      });
+      _performUpdate(0, true);
+      return;
+    }
+    int nextVal = _currentVal - 5;
+    if (nextVal % 5 != 0) {
+      nextVal = (nextVal ~/ 5) * 5;
+    }
+    if (nextVal < 0) nextVal = 0;
+    setState(() {
+      _currentVal = nextVal;
+      _controller.text = _currentVal.toString();
+      _errorText = null;
+    });
+    _performUpdate(_currentVal, true);
   }
 
   @override
   Widget build(BuildContext context) {
-    final cart = Provider.of<CartProvider>(context);
-    final totalQty = widget.value ?? cart.getProductTotalQuantity(widget.product.id);
-
-    if (!_focusNode.hasFocus) {
-      _controller.text = totalQty.toString();
-    }
-
-    return Container(
-      height: widget.height,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: Colors.black, width: 1.5),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          // Minus Button
-          IconButton(
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
-            icon: const Icon(Icons.remove, size: 16, color: Colors.black),
-            onPressed: () {
-              if (widget.onChanged != null) {
-                if (totalQty > 1) {
-                  widget.onChanged!(totalQty - 1);
-                }
-              } else {
-                cart.updateProductTotalQuantity(widget.product, totalQty - 1);
-              }
-            },
-          ),
-          // Editable text field
-          Expanded(
-            child: TextField(
-              controller: _controller,
-              focusNode: _focusNode,
-              keyboardType: TextInputType.number,
-              textAlign: TextAlign.center,
-              style: GoogleFonts.inter(
-                fontSize: widget.isSmall ? 11 : 13,
-                fontWeight: FontWeight.bold,
-                color: Colors.black,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Stepper Input Row
+        SizedBox(
+          width: widget.isSmall ? 100 : 130,
+          child: Container(
+            height: widget.height,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(
+                color: _errorText != null ? Colors.red.shade700 : Colors.black,
+                width: 1.5,
               ),
-              decoration: const InputDecoration(
-                isDense: true,
-                contentPadding: EdgeInsets.zero,
-                border: InputBorder.none,
-              ),
-              onSubmitted: (_) => _submitValue(),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                // Minus Button
+                IconButton(
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  icon: const Icon(Icons.remove, size: 16, color: Colors.black),
+                  onPressed: _currentVal > 0 ? _decrement : null,
+                ),
+                // Editable Text Field
+                Expanded(
+                  child: TextField(
+                    controller: _controller,
+                    focusNode: _focusNode,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: false, signed: false),
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.inter(
+                      fontSize: widget.isSmall ? 12 : 14,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                    ),
+                    decoration: const InputDecoration(
+                      isDense: true,
+                      contentPadding: EdgeInsets.zero,
+                      border: InputBorder.none,
+                    ),
+                    onChanged: (text) {
+                      final trimmed = text.trim();
+                      if (trimmed.isEmpty) {
+                        setState(() {
+                          _errorText = 'HashZone accepts wholesale orders only in multiples of 5 pieces.';
+                        });
+                        _performUpdate(_currentVal, false);
+                        return;
+                      }
+                      final val = int.tryParse(trimmed);
+                      if (val == null || val <= 0 || val % 5 != 0) {
+                        setState(() {
+                          _errorText = 'HashZone accepts wholesale orders only in multiples of 5 pieces.';
+                        });
+                        _performUpdate(val ?? 0, false);
+                      } else {
+                        setState(() {
+                          _errorText = null;
+                          _currentVal = val;
+                        });
+                        _performUpdate(val, true);
+                      }
+                    },
+                    onSubmitted: (_) => _validateAndSubmit(),
+                  ),
+                ),
+                // Plus Button
+                IconButton(
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  icon: const Icon(Icons.add, size: 16, color: Colors.black),
+                  onPressed: _increment,
+                ),
+              ],
             ),
           ),
-          // Plus Button
-          IconButton(
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
-            icon: const Icon(Icons.add, size: 16, color: Colors.black),
-            onPressed: () {
-              if (widget.onChanged != null) {
-                widget.onChanged!(totalQty + 1);
-              } else {
-                cart.updateProductTotalQuantity(widget.product, totalQty + 1);
-              }
-            },
+        ),
+        // Information Note
+        if (!widget.isSmall) ...[
+          const SizedBox(height: 8),
+          Text(
+            'HashZone is a wholesale supplier. Orders are accepted only in multiples of 5 pieces (5, 10, 15, 20...).',
+            style: GoogleFonts.inter(
+              fontSize: 10,
+              fontWeight: FontWeight.w500,
+              color: Colors.black54,
+              height: 1.3,
+            ),
           ),
         ],
-      ),
+        if (_errorText != null) ...[
+          const SizedBox(height: 6),
+          Text(
+            _errorText!,
+            style: GoogleFonts.inter(
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+              color: Colors.red.shade700,
+              height: 1.3,
+            ),
+          ),
+        ],
+      ],
     );
   }
 }

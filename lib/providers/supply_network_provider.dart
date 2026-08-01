@@ -151,6 +151,35 @@ class SupplyNetworkProvider extends ChangeNotifier {
     }
   }
 
+  // Adds a city name to an existing state.
+  // Throws Exception if the new name exists as a duplicate.
+  Future<void> addCity(SupplyState state, String cityName) async {
+    final cleanCityName = cityName.trim();
+    if (cleanCityName.isEmpty) throw Exception('City name cannot be empty');
+
+    final isDuplicate = state.cities.any(
+      (c) => c.toLowerCase() == cleanCityName.toLowerCase(),
+    );
+    if (isDuplicate) {
+      throw Exception('This city already exists.');
+    }
+
+    final updatedCities = List<String>.from(state.cities)..add(cleanCityName);
+
+    final updatedState = SupplyState(
+      id: state.id,
+      state: state.state,
+      latitude: state.latitude,
+      longitude: state.longitude,
+      cities: updatedCities,
+      active: state.active,
+      createdAt: state.createdAt,
+      updatedAt: DateTime.now(),
+    );
+
+    await _firestoreService.saveSupplyState(updatedState);
+  }
+
   // Edits a city name.
   // Throws Exception if the new name exists as a duplicate.
   Future<void> editCity(SupplyState state, String oldCityName, String newCityName) async {

@@ -184,6 +184,177 @@ class _AdminSupplyNetworkScreenState extends State<AdminSupplyNetworkScreen> {
     );
   }
 
+  void _showEditStateDialog(SupplyState state) {
+    final addController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            final provider = Provider.of<SupplyNetworkProvider>(context);
+            final currentState = provider.states.firstWhere(
+              (s) => s.id == state.id,
+              orElse: () => state,
+            );
+
+            return AlertDialog(
+              backgroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Text(
+                      'EDIT STATE: ${currentState.state.toUpperCase()}',
+                      style: GoogleFonts.cormorantGaramond(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                        color: Colors.black,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, color: Colors.black),
+                    onPressed: () => Navigator.pop(dialogContext),
+                  ),
+                ],
+              ),
+              content: SizedBox(
+                width: 400,
+                child: Form(
+                  key: formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'ADD CITY',
+                        style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.black54),
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextFormField(
+                              controller: addController,
+                              style: GoogleFonts.inter(fontSize: 13),
+                              decoration: InputDecoration(
+                                hintText: 'Enter city name',
+                                isDense: true,
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                              ),
+                              validator: (val) {
+                                if (val == null || val.trim().isEmpty) {
+                                  return 'Please enter a city name';
+                                }
+                                if (currentState.cities.any((c) => c.toLowerCase() == val.trim().toLowerCase())) {
+                                  return 'City already exists';
+                                }
+                                return null;
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.black,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            ),
+                            icon: const Icon(Icons.add, size: 14),
+                            label: const Text('ADD'),
+                            onPressed: () async {
+                              if (!formKey.currentState!.validate()) return;
+                              final newCity = addController.text.trim();
+                              await provider.addCity(currentState, newCity);
+                              addController.clear();
+                              setDialogState(() {});
+                            },
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      const Divider(color: Color(0xFFE5E5E5)),
+                      const SizedBox(height: 8),
+                      Text(
+                        'CITIES IN ${currentState.state.toUpperCase()}',
+                        style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.black54),
+                      ),
+                      const SizedBox(height: 8),
+                      if (currentState.cities.isEmpty)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 20),
+                          child: Center(
+                            child: Text(
+                              'No cities added yet.',
+                              style: GoogleFonts.inter(fontSize: 12, color: Colors.black38),
+                            ),
+                          ),
+                        )
+                      else
+                        ConstrainedBox(
+                          constraints: const BoxConstraints(maxHeight: 220),
+                          child: ListView.builder(
+                            shrinkWrap: true,
+                            itemCount: currentState.cities.length,
+                            itemBuilder: (context, index) {
+                              final city = currentState.cities[index];
+                              return Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 4),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        city,
+                                        style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w500),
+                                      ),
+                                    ),
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        IconButton(
+                                          icon: const Icon(Icons.edit_outlined, size: 16, color: Colors.black54),
+                                          onPressed: () {
+                                            _showEditCityDialog(currentState, city);
+                                          },
+                                        ),
+                                        IconButton(
+                                          icon: const Icon(Icons.delete_outline, size: 16, color: Colors.red),
+                                          onPressed: () async {
+                                            await provider.deleteCity(currentState, city);
+                                            setDialogState(() {});
+                                          },
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: const Text('DONE', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<SupplyNetworkProvider>(context);
@@ -209,7 +380,6 @@ class _AdminSupplyNetworkScreenState extends State<AdminSupplyNetworkScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Row Layout on Desktop, Column Layout on Mobile
             if (isDesktop)
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -251,7 +421,6 @@ class _AdminSupplyNetworkScreenState extends State<AdminSupplyNetworkScreen> {
               ),
               const Divider(height: 24, color: Color(0xFFE5E5E5)),
               
-              // State Dropdown Selector
               Text('State / Union Territory', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600)),
               const SizedBox(height: 8),
               DropdownButtonFormField<String>(
@@ -277,7 +446,6 @@ class _AdminSupplyNetworkScreenState extends State<AdminSupplyNetworkScreen> {
               ),
               const SizedBox(height: 20),
 
-              // City Input TextField
               Text('City Name (Optional)', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600)),
               const SizedBox(height: 8),
               TextFormField(
@@ -292,7 +460,6 @@ class _AdminSupplyNetworkScreenState extends State<AdminSupplyNetworkScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Save Button
               SizedBox(
                 width: double.infinity,
                 height: 44,
@@ -393,6 +560,10 @@ class _AdminSupplyNetworkScreenState extends State<AdminSupplyNetworkScreen> {
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      IconButton(
+                        icon: const Icon(Icons.edit_outlined, color: Colors.blue, size: 18),
+                        onPressed: () => _showEditStateDialog(state),
+                      ),
                       IconButton(
                         icon: const Icon(Icons.delete_outline, color: Colors.red, size: 18),
                         onPressed: () => _confirmDeleteState(state),

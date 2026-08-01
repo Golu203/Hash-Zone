@@ -8,6 +8,7 @@ import '../providers/catalog_provider.dart';
 import '../providers/business_provider.dart';
 import '../widgets/navbar.dart';
 import '../widgets/footer.dart';
+import '../widgets/quantity_stepper.dart';
 
 class CartScreen extends StatelessWidget {
   const CartScreen({super.key});
@@ -390,6 +391,27 @@ class CartScreen extends StatelessWidget {
                   ],
                 ),
                 
+                 const SizedBox(height: 12),
+                Text(
+                  'HashZone is a wholesale supplier. Orders are accepted only in multiples of 5 pieces (5, 10, 15, 20...).',
+                  style: GoogleFonts.inter(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.black54,
+                    height: 1.3,
+                  ),
+                ),
+                if (groupedItem.sizes.any((item) => item.quantity % 5 != 0)) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    'HashZone accepts wholesale orders only in multiples of 5 pieces.',
+                    style: GoogleFonts.inter(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.red.shade700,
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 16),
                 // Product Total Display
                 Row(
@@ -522,6 +544,27 @@ class CartScreen extends StatelessWidget {
             ],
           ),
           
+          const SizedBox(height: 12),
+          Text(
+            'HashZone is a wholesale supplier. Orders are accepted only in multiples of 5 pieces (5, 10, 15, 20...).',
+            style: GoogleFonts.inter(
+              fontSize: 10.0,
+              fontWeight: FontWeight.w500,
+              color: Colors.black54,
+              height: 1.3,
+            ),
+          ),
+          if (groupedItem.sizes.any((item) => item.quantity % 5 != 0)) ...[
+            const SizedBox(height: 6),
+            Text(
+              'HashZone accepts wholesale orders only in multiples of 5 pieces.',
+              style: GoogleFonts.inter(
+                fontSize: 10.0,
+                fontWeight: FontWeight.bold,
+                color: Colors.red.shade700,
+              ),
+            ),
+          ],
           const SizedBox(height: 10),
           // Product Total Display
           Align(
@@ -541,6 +584,8 @@ class CartScreen extends StatelessWidget {
   }
 
   Widget _buildSummaryCard(BuildContext context, CartProvider cart, BusinessProvider business) {
+    final bool hasInvalidQuantity = cart.items.any((item) => item.quantity % 5 != 0);
+
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -594,11 +639,13 @@ class CartScreen extends StatelessWidget {
             width: double.infinity,
             height: 52,
             child: ElevatedButton.icon(
-              onPressed: () => _checkoutWhatsApp(context, cart, business),
+              onPressed: hasInvalidQuantity ? null : () => _checkoutWhatsApp(context, cart, business),
               icon: const Icon(Icons.chat_bubble_outline_rounded, color: Colors.white, size: 18),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF25D366),
                 foregroundColor: Colors.white,
+                disabledBackgroundColor: Colors.grey.shade300,
+                disabledForegroundColor: Colors.grey.shade500,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               ),
               label: Text(
@@ -607,6 +654,18 @@ class CartScreen extends StatelessWidget {
               ),
             ),
           ),
+          if (hasInvalidQuantity) ...[
+            const SizedBox(height: 12),
+            Text(
+              '⚠️ Some items have invalid quantities. HashZone accepts wholesale orders only in multiples of 5 pieces.',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.inter(
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                color: Colors.red.shade700,
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -633,7 +692,7 @@ class GroupedCartItem {
   }
 }
 
-class _HZCartInlineQuantityStepper extends StatefulWidget {
+class _HZCartInlineQuantityStepper extends StatelessWidget {
   final String productId;
   final String size;
   final int quantity;
@@ -647,94 +706,18 @@ class _HZCartInlineQuantityStepper extends StatefulWidget {
   });
 
   @override
-  State<_HZCartInlineQuantityStepper> createState() => _HZCartInlineQuantityStepperState();
-}
-
-class _HZCartInlineQuantityStepperState extends State<_HZCartInlineQuantityStepper> {
-  late TextEditingController _controller;
-  late FocusNode _focusNode;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = TextEditingController(text: widget.quantity.toString());
-    _focusNode = FocusNode();
-    _focusNode.addListener(_onFocusChange);
-  }
-
-  @override
-  void didUpdateWidget(covariant _HZCartInlineQuantityStepper oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.quantity != widget.quantity && !_focusNode.hasFocus) {
-      _controller.text = widget.quantity.toString();
-    }
-  }
-
-  @override
-  void dispose() {
-    _focusNode.removeListener(_onFocusChange);
-    _controller.dispose();
-    _focusNode.dispose();
-    super.dispose();
-  }
-
-  void _onFocusChange() {
-    if (!_focusNode.hasFocus) {
-      _submitValue();
-    }
-  }
-
-  void _submitValue() {
-    final val = int.tryParse(_controller.text);
-    if (val != null && val >= 1) {
-      if (val != widget.quantity) {
-        widget.cart.updateQuantity(widget.productId, widget.size, val);
-      }
-    } else {
-      _controller.text = widget.quantity.toString();
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        IconButton(
-          padding: EdgeInsets.zero,
-          constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
-          icon: const Icon(Icons.remove, size: 14, color: Colors.black),
-          onPressed: () {
-            if (widget.quantity > 1) {
-              widget.cart.updateQuantity(widget.productId, widget.size, widget.quantity - 1);
-            }
-          },
-        ),
-        SizedBox(
-          width: 32,
-          child: TextField(
-            controller: _controller,
-            focusNode: _focusNode,
-            keyboardType: TextInputType.number,
-            textAlign: TextAlign.center,
-            style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.black),
-            decoration: const InputDecoration(
-              isDense: true,
-              contentPadding: EdgeInsets.zero,
-              border: InputBorder.none,
-            ),
-            onSubmitted: (_) => _submitValue(),
-          ),
-        ),
-        IconButton(
-          padding: EdgeInsets.zero,
-          constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
-          icon: const Icon(Icons.add, size: 14, color: Colors.black),
-          onPressed: () {
-            widget.cart.updateQuantity(widget.productId, widget.size, widget.quantity + 1);
-          },
-        ),
-      ],
+    return Center(
+      child: HZQuantityStepper(
+        initialValue: quantity,
+        isSmall: true,
+        height: 28,
+        onChanged: (newQty, isValid) {
+          if (isValid) {
+            cart.updateQuantity(productId, size, newQty);
+          }
+        },
+      ),
     );
   }
 }

@@ -40,7 +40,8 @@ class HZProductActionDialog extends StatefulWidget {
 
 class _HZProductActionDialogState extends State<HZProductActionDialog> {
   late String _selectedSize;
-  int _quantity = 1;
+  int _quantity = 5;
+  bool _isQuantityValid = true;
 
   @override
   void initState() {
@@ -51,7 +52,7 @@ class _HZProductActionDialogState extends State<HZProductActionDialog> {
     _selectedSize = sizes.first;
   }
 
-  Future<void> _handleWhatsAppSubmit(BuildContext context, double unitPrice, double totalPrice) async {
+  Future<void> _handleWhatsAppSubmit(BuildContext context, String unitPriceLabel, String totalPriceLabel) async {
     final business = Provider.of<BusinessProvider>(context, listen: false);
     final catalog = Provider.of<CatalogProvider>(context, listen: false);
 
@@ -69,8 +70,8 @@ class _HZProductActionDialogState extends State<HZProductActionDialog> {
 • *SKU*: ${widget.product.sku}
 • *Selected Size*: $_selectedSize
 • *Quantity*: $_quantity
-• *Unit Price*: ₹${unitPrice.toStringAsFixed(0)}
-• *Total Price*: ₹${totalPrice.toStringAsFixed(0)}
+• *Unit Price*: $unitPriceLabel
+• *Total Price*: $totalPriceLabel
 • *Segment*: $dept
 • *Category*: $cat
 • *Product URL*: $productUrl
@@ -139,6 +140,10 @@ Please confirm availability and ordering details. Thank you!
 
     final double unitPrice = widget.product.getActivePriceForSize(_selectedSize);
     final double totalPrice = unitPrice * _quantity;
+    final String unitPriceLabel = widget.product.getPriceLabelForSize(_selectedSize);
+    final String totalPriceLabel = _quantity > 0 && unitPrice > 0
+        ? _getTotalPriceLabel(unitPriceLabel, _quantity, totalPrice)
+        : unitPriceLabel;
 
     return Dialog(
       backgroundColor: Colors.white,
@@ -238,8 +243,7 @@ Please confirm availability and ordering details. Thank you!
                   focusColor: Colors.transparent,
                   style: GoogleFonts.inter(fontSize: 13, color: Colors.black, fontWeight: FontWeight.w600),
                   items: sizes.map((size) {
-                    final sizePrice = widget.product.getActivePriceForSize(size);
-                    final priceLabel = sizePrice > 0 ? '₹${sizePrice.toStringAsFixed(0)}' : 'Price on Inquiry';
+                    final priceLabel = widget.product.getPriceLabelForSize(size);
                     return DropdownMenuItem<String>(
                       value: size,
                       child: Text('$size — $priceLabel'),
@@ -263,18 +267,15 @@ Please confirm availability and ordering details. Thank you!
               style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold, color: const Color(0xFF555555)),
             ),
             const SizedBox(height: 6),
-            SizedBox(
-              width: 120,
-              child: HZQuantityStepper(
-                product: widget.product,
-                height: 36.0,
-                value: _quantity,
-                onChanged: (newQty) {
-                  setState(() {
-                    _quantity = newQty;
-                  });
-                },
-              ),
+            HZQuantityStepper(
+              initialValue: _quantity,
+              isSmall: false,
+              onChanged: (newQty, isValid) {
+                setState(() {
+                  _quantity = newQty;
+                  _isQuantityValid = isValid;
+                });
+              },
             ),
             const SizedBox(height: 24),
 
@@ -298,7 +299,7 @@ Please confirm availability and ordering details. Thank you!
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        unitPrice > 0 ? '₹${unitPrice.toStringAsFixed(0)}' : 'Inquiry',
+                        unitPriceLabel,
                         style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.black),
                       ),
                     ],
@@ -312,7 +313,7 @@ Please confirm availability and ordering details. Thank you!
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        totalPrice > 0 ? '₹${totalPrice.toStringAsFixed(0)}' : 'Inquiry',
+                        totalPriceLabel,
                         style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.black),
                       ),
                     ],
@@ -341,16 +342,20 @@ Please confirm availability and ordering details. Thank you!
                 Expanded(
                   flex: 2,
                   child: ElevatedButton(
-                    onPressed: () {
-                      if (widget.isWhatsApp) {
-                        _handleWhatsAppSubmit(context, unitPrice, totalPrice);
-                      } else {
-                        _handleAddToCartSubmit(context, unitPrice);
-                      }
-                    },
+                    onPressed: _isQuantityValid
+                        ? () {
+                            if (widget.isWhatsApp) {
+                              _handleWhatsAppSubmit(context, unitPriceLabel, totalPriceLabel);
+                            } else {
+                              _handleAddToCartSubmit(context, unitPrice);
+                            }
+                          }
+                        : null,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: widget.isWhatsApp ? const Color(0xFF25D366) : Colors.black,
                       foregroundColor: Colors.white,
+                      disabledBackgroundColor: Colors.grey.shade300,
+                      disabledForegroundColor: Colors.grey.shade500,
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       elevation: 0,
@@ -367,5 +372,16 @@ Please confirm availability and ordering details. Thank you!
         ),
       ),
     );
+  }
+
+  String _getTotalPriceLabel(String unitPriceLabel, int quantity, double totalPrice) {
+    if (totalPrice <= 0) return unitPriceLabel;
+    final cleanNumStr = unitPriceLabel.replaceAll(RegExp(r'[^\d.]'), '');
+    final numIndex = unitPriceLabel.lastIndexOf(cleanNumStr);
+    if (numIndex != -1) {
+      final suffix = unitPriceLabel.substring(numIndex + cleanNumStr.length);
+      return '₹${totalPrice.toStringAsFixed(0)}$suffix';
+    }
+    return '₹${totalPrice.toStringAsFixed(0)}';
   }
 }

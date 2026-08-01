@@ -18,7 +18,7 @@ class Product {
   final bool isOffer;
   final List<String> tags;
   final List<String> availableSizes;
-  final Map<String, double> sizePrices;
+  final Map<String, String> sizePrices;
   final String uniqueProductCode;
   final DateTime createdAt;
 
@@ -105,7 +105,7 @@ class Product {
     bool? isOffer,
     List<String>? tags,
     List<String>? availableSizes,
-    Map<String, double>? sizePrices,
+    Map<String, String>? sizePrices,
     DateTime? createdAt,
     String? uniqueProductCode,
   }) {
@@ -131,18 +131,31 @@ class Product {
     );
   }
 
-  double getPriceForSize(String size) {
-    if (sizePrices.containsKey(size)) {
+  String getPriceLabelForSize(String size) {
+    if (sizePrices.containsKey(size) && sizePrices[size]!.isNotEmpty) {
       return sizePrices[size]!;
     }
-    final clean = price.replaceAll(RegExp(r'[^\d.]'), '');
+    if (price.isNotEmpty) {
+      return price;
+    }
+    return 'Inquiry';
+  }
+
+  double getPriceForSize(String size) {
+    String priceStr = '';
+    if (sizePrices.containsKey(size) && sizePrices[size]!.isNotEmpty) {
+      priceStr = sizePrices[size]!;
+    } else {
+      priceStr = price;
+    }
+    final clean = priceStr.replaceAll(RegExp(r'[^\d.]'), '');
     return double.tryParse(clean) ?? 0.0;
   }
 
   double getActivePriceForSize(String size) {
     final double base = getPriceForSize(size);
     if (isOffer && offerPrice != null && offerPrice! > 0) {
-      final double defaultBase = getPriceForSize('');
+      final double defaultBase = getPriceForSize(availableSizes.isNotEmpty ? availableSizes.first : '');
       if (defaultBase > 0) {
         final double discountRatio = offerPrice! / defaultBase;
         return base * discountRatio;
@@ -196,11 +209,10 @@ class Product {
       return [];
     }
 
-    Map<String, double> parseSizePrices(dynamic val) {
+    Map<String, String> parseSizePrices(dynamic val) {
       if (val is Map) {
         return val.map((key, value) {
-          final doubleVal = value is num ? value.toDouble() : double.tryParse(value.toString()) ?? 0.0;
-          return MapEntry(key.toString(), doubleVal);
+          return MapEntry(key.toString(), value.toString());
         });
       }
       return {};

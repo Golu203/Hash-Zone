@@ -93,44 +93,12 @@ class AdminProvider extends ChangeNotifier {
   }
 
   Future<void> toggleProductFeatured(Product product) async {
-    final updated = Product(
-      id: product.id,
-      title: product.title,
-      sku: product.sku,
-      departmentId: product.departmentId,
-      categoryId: product.categoryId,
-      subcategoryId: product.subcategoryId,
-      price: product.price,
-      images: product.images,
-      description: product.description,
-      specifications: product.specifications,
-      isFeatured: !product.isFeatured,
-      isOffer: product.isOffer,
-      tags: product.tags,
-      availableSizes: product.availableSizes,
-      createdAt: product.createdAt,
-    );
+    final updated = product.copyWith(isFeatured: !product.isFeatured);
     await _firestoreService.saveProduct(updated);
   }
 
   Future<void> toggleProductOffer(Product product) async {
-    final updated = Product(
-      id: product.id,
-      title: product.title,
-      sku: product.sku,
-      departmentId: product.departmentId,
-      categoryId: product.categoryId,
-      subcategoryId: product.subcategoryId,
-      price: product.price,
-      images: product.images,
-      description: product.description,
-      specifications: product.specifications,
-      isFeatured: product.isFeatured,
-      isOffer: !product.isOffer,
-      tags: product.tags,
-      availableSizes: product.availableSizes,
-      createdAt: product.createdAt,
-    );
+    final updated = product.copyWith(isOffer: !product.isOffer);
     await _firestoreService.saveProduct(updated);
   }
 

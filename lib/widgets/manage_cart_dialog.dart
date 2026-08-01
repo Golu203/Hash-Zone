@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../models/product.dart';
 import '../providers/cart_provider.dart';
 import 'product_action_dialog.dart';
+import 'quantity_stepper.dart';
 
 class HZManageCartDialog extends StatefulWidget {
   final Product product;
@@ -30,52 +31,12 @@ class HZManageCartDialog extends StatefulWidget {
 }
 
 class _HZManageCartDialogState extends State<HZManageCartDialog> {
-  late TextEditingController _controller;
-  late FocusNode _focusNode;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = TextEditingController();
-    _focusNode = FocusNode();
-    _focusNode.addListener(_onFocusChange);
-  }
-
-  @override
-  void dispose() {
-    _focusNode.removeListener(_onFocusChange);
-    _controller.dispose();
-    _focusNode.dispose();
-    super.dispose();
-  }
-
-  void _onFocusChange() {
-    if (!_focusNode.hasFocus) {
-      _submitValue();
-    }
-  }
-
-  void _submitValue() {
-    final cart = Provider.of<CartProvider>(context, listen: false);
-    final totalQty = cart.getProductTotalQuantity(widget.product.id);
-    final val = int.tryParse(_controller.text);
-    if (val != null) {
-      if (val != totalQty) {
-        cart.updateProductTotalQuantity(widget.product, val);
-      }
-    } else {
-      _controller.text = totalQty.toString();
-    }
-  }
+  bool _isQuantityValid = true;
 
   @override
   Widget build(BuildContext context) {
     final cart = Provider.of<CartProvider>(context);
     final totalQty = cart.getProductTotalQuantity(widget.product.id);
-
-    if (!_focusNode.hasFocus) {
-      _controller.text = totalQty.toString();
-    }
 
     return Dialog(
       backgroundColor: Colors.white,
@@ -164,46 +125,17 @@ class _HZManageCartDialogState extends State<HZManageCartDialog> {
               ),
             ),
             const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                border: Border.all(color: const Color(0xFFCCCCCC)),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.remove, size: 20, color: Colors.black),
-                    onPressed: () {
-                      if (totalQty > 0) {
-                        cart.updateProductTotalQuantity(widget.product, totalQty - 1);
-                      }
-                    },
-                  ),
-                  Expanded(
-                    child: TextField(
-                      controller: _controller,
-                      focusNode: _focusNode,
-                      keyboardType: TextInputType.number,
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.black),
-                      decoration: const InputDecoration(
-                        isDense: true,
-                        contentPadding: EdgeInsets.zero,
-                        border: InputBorder.none,
-                      ),
-                      onSubmitted: (_) => _submitValue(),
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.add, size: 20, color: Colors.black),
-                    onPressed: () {
-                      cart.updateProductTotalQuantity(widget.product, totalQty + 1);
-                    },
-                  ),
-                ],
-              ),
+            HZQuantityStepper(
+              initialValue: totalQty,
+              isSmall: false,
+              onChanged: (newQty, isValid) {
+                setState(() {
+                  _isQuantityValid = isValid;
+                });
+                if (isValid) {
+                  cart.updateProductTotalQuantity(widget.product, newQty);
+                }
+              },
             ),
             const SizedBox(height: 24),
 
@@ -248,7 +180,10 @@ class _HZManageCartDialogState extends State<HZManageCartDialog> {
             Align(
               alignment: Alignment.centerRight,
               child: TextButton(
-                onPressed: () => Navigator.pop(context),
+                onPressed: _isQuantityValid ? () => Navigator.pop(context) : null,
+                style: TextButton.styleFrom(
+                  disabledForegroundColor: Colors.grey.shade400,
+                ),
                 child: Text(
                   'DONE',
                   style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: Colors.black, fontSize: 13),

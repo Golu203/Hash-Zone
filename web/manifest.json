@@ -1,11 +1,11 @@
 {
-    "name": "hashzone",
-    "short_name": "hashzone",
+    "name": "HashZone",
+    "short_name": "HashZone",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#ffffff",
     "theme_color": "#000000",
-    "description": "A new Flutter project.",
+    "description": "HashZone is a premium wholesale clothing supplier and bulk garment manufacturer.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

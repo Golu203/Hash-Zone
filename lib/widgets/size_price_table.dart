@@ -100,14 +100,7 @@ class _HZSizePriceTableState extends State<HZSizePriceTable> {
   }
 
   String getSizePriceString(String size) {
-    final double pVal = widget.product.getActivePriceForSize(size);
-    if (pVal > 0) {
-      return currencyFormatter.format(pVal);
-    }
-    if (widget.product.price.isNotEmpty) {
-      return widget.product.price;
-    }
-    return 'Inquiry';
+    return widget.product.getPriceLabelForSize(size);
   }
 
   @override

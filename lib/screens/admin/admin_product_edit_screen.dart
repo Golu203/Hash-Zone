@@ -93,7 +93,7 @@ class _AdminProductEditScreenState extends ConsumerState<AdminProductEditScreen>
           _sizePrices.add(
             SizePriceRow(
               size: size,
-              price: priceVal != null ? priceVal.toStringAsFixed(0) : '',
+              price: priceVal ?? '',
             ),
           );
         }
@@ -238,13 +238,13 @@ class _AdminProductEditScreenState extends ConsumerState<AdminProductEditScreen>
         : null;
 
     final List<String> availableSizes = [];
-    final Map<String, double> sizePrices = {};
+    final Map<String, String> sizePrices = {};
     for (final row in _sizePrices) {
       if (row.size.isNotEmpty) {
         availableSizes.add(row.size);
-        final doublePrice = double.tryParse(row.priceController.text.trim());
-        if (doublePrice != null && doublePrice > 0) {
-          sizePrices[row.size] = doublePrice;
+        final priceText = row.priceController.text.trim();
+        if (priceText.isNotEmpty) {
+          sizePrices[row.size] = priceText;
         }
       }
     }
@@ -787,11 +787,10 @@ class _AdminProductEditScreenState extends ConsumerState<AdminProductEditScreen>
                                           flex: 2,
                                           child: TextFormField(
                                             controller: row.priceController,
-                                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                            keyboardType: TextInputType.text,
                                             style: GoogleFonts.inter(fontSize: 13, color: Colors.black),
                                             decoration: const InputDecoration(
-                                              hintText: 'Price (Optional)',
-                                              prefixText: '₹ ',
+                                              hintText: 'e.g. ₹260 + GST / Inquiry',
                                               contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                                               border: OutlineInputBorder(),
                                             ),
