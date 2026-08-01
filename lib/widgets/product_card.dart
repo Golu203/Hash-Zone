@@ -344,7 +344,7 @@ Could you please provide availability and order details?
       return SizedBox(
         width: double.infinity,
         child: ElevatedButton.icon(
-          onPressed: () => _inquireViaWhatsApp(context),
+          onPressed: () => HZProductActionDialog.show(context, product: product, isWhatsApp: true),
           icon: const Icon(Icons.chat_outlined, color: Colors.white, size: 14),
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFF25D366),
