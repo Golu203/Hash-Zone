@@ -13,6 +13,7 @@ import 'whatsapp_button.dart';
 import 'context_menu_wrapper.dart';
 import 'size_price_table.dart';
 import 'quantity_stepper.dart';
+import 'manage_cart_dialog.dart';
 
 /// Canonical size order: letter sizes first (XS→3XL), then Free Size, then numeric ascending.
 const _kSizeOrder = [
@@ -298,13 +299,18 @@ class _CompactInquiryButton extends StatelessWidget {
 
     final int cartQty = cart.getProductTotalQuantity(product.id);
     if (cartQty > 0) {
-      return HZQuantityStepper(
-        product: product,
-        initialValue: cartQty,
-        height: isSmall ? 28 : 36,
-        isSmall: isSmall,
-        isFullWidth: true,
-        showNote: false,
+      return GestureDetector(
+        onTap: () => HZManageCartDialog.show(context, product: product),
+        child: AbsorbPointer(
+          child: HZQuantityStepper(
+            product: product,
+            initialValue: cartQty,
+            height: isSmall ? 28 : 36,
+            isSmall: isSmall,
+            isFullWidth: true,
+            showNote: false,
+          ),
+        ),
       );
     }
 
