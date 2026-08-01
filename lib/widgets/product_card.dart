@@ -3,17 +3,18 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../models/product.dart';
 import '../providers/catalog_provider.dart';
 import '../providers/business_provider.dart';
 import '../providers/cart_provider.dart';
 import 'product_action_dialog.dart';
 import 'cloudinary_image_widget.dart';
-import 'whatsapp_button.dart';
 import 'context_menu_wrapper.dart';
 import 'size_price_table.dart';
 import 'quantity_stepper.dart';
 import 'manage_cart_dialog.dart';
+import 'customer_info_dialog.dart';
 
 /// Canonical size order: letter sizes first (XS→3XL), then Free Size, then numeric ascending.
 const _kSizeOrder = [
@@ -269,16 +270,81 @@ class _CompactInquiryButton extends StatelessWidget {
     required this.isSmall,
   });
 
+  /// Directly shows the ORDER DETAILS popup and then launches WhatsApp
+  /// with the pre-formatted product inquiry message + customer details at the top.
+  Future<void> _inquireViaWhatsApp(BuildContext context) async {
+    final businessProvider = Provider.of<BusinessProvider>(context, listen: false);
+    final catalogProvider = Provider.of<CatalogProvider>(context, listen: false);
+
+    final result = await HZCustomerInfoDialog.show(context);
+    if (result == null) return; // user cancelled
+
+    final rawNumber = businessProvider.settings.whatsAppNumber.replaceAll(RegExp(r'[^\d+]'), '');
+    final cleanWa = rawNumber.startsWith('+') ? rawNumber.substring(1) : rawNumber;
+    final dept = catalogProvider.getDepartmentById(product.departmentId)?.name ?? 'Apparel';
+    final cat = catalogProvider.getCategoryById(product.categoryId)?.name ?? 'Clothing';
+    final productUrl = '${Uri.base.origin}/product/${product.slug}';
+
+    final priceInfo = product.price.trim().isNotEmpty
+        ? '\n• Price: ${product.price}'
+        : '';
+
+    final customerName = result['name'] ?? '';
+    final customerPhone = result['phone'] ?? '';
+    final customerNote = result['note'] ?? '';
+
+    final detailsBuffer = StringBuffer();
+    detailsBuffer.writeln('🛍️ *PRODUCT INQUIRY - HASH ZONE*');
+    detailsBuffer.writeln('──────────────────');
+    detailsBuffer.writeln('👤 *Customer Details*');
+    detailsBuffer.writeln('   • Name: ${customerName.trim()}');
+    if (customerPhone.trim().isNotEmpty) {
+      detailsBuffer.writeln('   • Phone: ${customerPhone.trim()}');
+    }
+    if (customerNote.trim().isNotEmpty) {
+      detailsBuffer.writeln('   • Note: ${customerNote.trim()}');
+    }
+    detailsBuffer.writeln('──────────────────');
+
+    final message = '''${detailsBuffer.toString()}Hello HASH ZONE,
+
+I am interested in inquiring about this item from your store:
+
+• Product Name: ${product.title}
+• SKU CODE: "${product.sku}"
+• Segment: $dept
+• Category: $cat$priceInfo
+• URL: $productUrl
+
+Could you please provide availability and order details?
+''';
+
+    final whatsappUri = Uri.parse('https://wa.me/$cleanWa?text=${Uri.encodeComponent(message)}');
+    if (await canLaunchUrl(whatsappUri)) {
+      await launchUrl(whatsappUri, mode: LaunchMode.externalApplication);
+    } else {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not launch WhatsApp. Number: ${businessProvider.settings.whatsAppNumber}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final business = Provider.of<BusinessProvider>(context);
     final cart = Provider.of<CartProvider>(context);
 
+    // ── Cart DISABLED by admin: show only the Inquire button ─────────────────
     if (!business.settings.enableShoppingCart) {
       return SizedBox(
         width: double.infinity,
         child: ElevatedButton.icon(
-          onPressed: () => HZProductActionDialog.show(context, product: product, isWhatsApp: true),
+          onPressed: () => _inquireViaWhatsApp(context),
           icon: const Icon(Icons.chat_outlined, color: Colors.white, size: 14),
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFF25D366),
@@ -297,6 +363,7 @@ class _CompactInquiryButton extends StatelessWidget {
       );
     }
 
+    // ── Cart ENABLED: show quantity stepper if item already in cart ───────────
     final int cartQty = cart.getProductTotalQuantity(product.id);
     if (cartQty > 0) {
       return GestureDetector(
@@ -314,12 +381,13 @@ class _CompactInquiryButton extends StatelessWidget {
       );
     }
 
+    // ── Cart ENABLED: show WhatsApp inquiry + Add to cart buttons ─────────────
     return Row(
       children: [
-        // WhatsApp Action Dialog Trigger
+        // WhatsApp inquiry — directly shows ORDER DETAILS popup (no size step)
         Expanded(
           child: ElevatedButton(
-            onPressed: () => HZProductActionDialog.show(context, product: product, isWhatsApp: true),
+            onPressed: () => _inquireViaWhatsApp(context),
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF25D366),
               foregroundColor: Colors.white,
@@ -337,7 +405,7 @@ class _CompactInquiryButton extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 8),
-        // Add to Cart Action Dialog Trigger
+        // Add to Cart — still opens the full size/quantity action dialog
         Expanded(
           child: ElevatedButton(
             onPressed: () => HZProductActionDialog.show(context, product: product, isWhatsApp: false),
