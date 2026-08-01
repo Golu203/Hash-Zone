@@ -187,11 +187,24 @@ class _HZQuantityStepperState extends State<HZQuantityStepper> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 // Minus Button
-                IconButton(
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                  icon: const Icon(Icons.remove, size: 16, color: Colors.black),
-                  onPressed: _currentVal > 0 ? _decrement : null,
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: _currentVal > 0 ? _decrement : null,
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(5),
+                      bottomLeft: Radius.circular(5),
+                    ),
+                    child: SizedBox(
+                      width: widget.isSmall ? 28 : 36,
+                      height: double.infinity,
+                      child: Icon(
+                        Icons.remove,
+                        size: widget.isSmall ? 14 : 16,
+                        color: _currentVal > 0 ? Colors.black : Colors.black26,
+                      ),
+                    ),
+                  ),
                 ),
                 // Editable Text Field
                 Expanded(
@@ -237,11 +250,24 @@ class _HZQuantityStepperState extends State<HZQuantityStepper> {
                   ),
                 ),
                 // Plus Button
-                IconButton(
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                  icon: const Icon(Icons.add, size: 16, color: Colors.black),
-                  onPressed: _increment,
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: _increment,
+                    borderRadius: const BorderRadius.only(
+                      topRight: Radius.circular(5),
+                      bottomRight: Radius.circular(5),
+                    ),
+                    child: SizedBox(
+                      width: widget.isSmall ? 28 : 36,
+                      height: double.infinity,
+                      child: Icon(
+                        Icons.add,
+                        size: widget.isSmall ? 14 : 16,
+                        color: Colors.black,
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),
