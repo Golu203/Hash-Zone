@@ -12,6 +12,7 @@ class CartItem {
   final double price;
   final int quantity;
   final String productUrl;
+  final String sku;
 
   CartItem({
     required this.productId,
@@ -21,6 +22,7 @@ class CartItem {
     required this.price,
     required this.quantity,
     required this.productUrl,
+    required this.sku,
   });
 
   CartItem copyWith({
@@ -31,6 +33,7 @@ class CartItem {
     double? price,
     int? quantity,
     String? productUrl,
+    String? sku,
   }) {
     return CartItem(
       productId: productId ?? this.productId,
@@ -40,6 +43,7 @@ class CartItem {
       price: price ?? this.price,
       quantity: quantity ?? this.quantity,
       productUrl: productUrl ?? this.productUrl,
+      sku: sku ?? this.sku,
     );
   }
 
@@ -52,6 +56,7 @@ class CartItem {
       'price': price,
       'quantity': quantity,
       'productUrl': productUrl,
+      'sku': sku,
     };
   }
 
@@ -64,6 +69,7 @@ class CartItem {
       price: (map['price'] as num?)?.toDouble() ?? 0.0,
       quantity: map['quantity'] ?? 1,
       productUrl: map['productUrl'] ?? '',
+      sku: map['sku'] ?? '',
     );
   }
 }
@@ -167,6 +173,7 @@ class CartProvider extends ChangeNotifier {
         price: price,
         quantity: quantity,
         productUrl: productUrl,
+        sku: product.sku,
       ));
     }
     notifyListeners();
@@ -261,6 +268,9 @@ class CartProvider extends ChangeNotifier {
     grouped.forEach((productId, itemsList) {
       final firstItem = itemsList.first;
       buffer.writeln('$index. *${firstItem.title}*');
+      if (firstItem.sku.trim().isNotEmpty) {
+        buffer.writeln('   • SKU: ${firstItem.sku.trim()}');
+      }
       
       double productTotal = 0.0;
       for (var item in itemsList) {
