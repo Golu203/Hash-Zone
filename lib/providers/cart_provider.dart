@@ -235,10 +235,22 @@ class CartProvider extends ChangeNotifier {
     _saveCart();
   }
 
-  String generateWhatsAppMessage() {
+  String generateWhatsAppMessage({String? customerName, String? customerPhone, String? customerNote}) {
     final buffer = StringBuffer();
     buffer.writeln('🛍️ *NEW ORDER INQUIRY - HASH ZONE*');
     buffer.writeln('──────────────────');
+
+    if (customerName != null && customerName.trim().isNotEmpty) {
+      buffer.writeln('👤 *Customer Details*');
+      buffer.writeln('   • Name: ${customerName.trim()}');
+      if (customerPhone != null && customerPhone.trim().isNotEmpty) {
+        buffer.writeln('   • Phone: ${customerPhone.trim()}');
+      }
+      if (customerNote != null && customerNote.trim().isNotEmpty) {
+        buffer.writeln('   • Note: ${customerNote.trim()}');
+      }
+      buffer.writeln('──────────────────');
+    }
     
     final grouped = <String, List<CartItem>>{};
     for (var item in _items) {
