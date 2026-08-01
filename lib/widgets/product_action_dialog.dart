@@ -8,6 +8,7 @@ import '../providers/cart_provider.dart';
 import '../providers/business_provider.dart';
 import '../providers/catalog_provider.dart';
 import 'quantity_stepper.dart';
+import 'customer_info_dialog.dart';
 
 class HZProductActionDialog extends StatefulWidget {
   final Product product;
@@ -54,6 +55,9 @@ class _HZProductActionDialogState extends State<HZProductActionDialog> {
     final business = Provider.of<BusinessProvider>(context, listen: false);
     final catalog = Provider.of<CatalogProvider>(context, listen: false);
 
+    final result = await HZCustomerInfoDialog.show(context);
+    if (result == null) return; // user cancelled
+
     final rawNumber = business.settings.whatsAppNumber.replaceAll(RegExp(r'[^\d+]'), '');
     final cleanWa = rawNumber.startsWith('+') ? rawNumber.substring(1) : rawNumber;
     
@@ -61,11 +65,26 @@ class _HZProductActionDialogState extends State<HZProductActionDialog> {
     final cat = catalog.getCategoryById(widget.product.categoryId)?.name ?? 'Clothing';
     final productUrl = '${Uri.base.origin}/product/${widget.product.slug}';
 
+    final customerName = result['name'] ?? '';
+    final customerPhone = result['phone'] ?? '';
+    final customerNote = result['note'] ?? '';
+
+    final detailsBuffer = StringBuffer();
+    detailsBuffer.writeln('🛍️ *PRODUCT INQUIRY - HASH ZONE*');
+    detailsBuffer.writeln('──────────────────');
+    detailsBuffer.writeln('👤 *Customer Details*');
+    detailsBuffer.writeln('   • Name: ${customerName.trim()}');
+    if (customerPhone.trim().isNotEmpty) {
+      detailsBuffer.writeln('   • Phone: ${customerPhone.trim()}');
+    }
+    if (customerNote.trim().isNotEmpty) {
+      detailsBuffer.writeln('   • Note: ${customerNote.trim()}');
+    }
+    detailsBuffer.writeln('──────────────────');
+
     final message = '''
-🛍️ *PRODUCT INQUIRY - HASH ZONE*
-──────────────────
-• *Product Name*: ${widget.product.title}
-• *SKU*: ${widget.product.sku}
+${detailsBuffer.toString()}• *Product Name*: ${widget.product.title}
+• *SKU CODE*: "${widget.product.sku}"
 • *Selected Size*: $_selectedSize
 • *Quantity*: $_quantity
 • *Unit Price*: $unitPriceLabel

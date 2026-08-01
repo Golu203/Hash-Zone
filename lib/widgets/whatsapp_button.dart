@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../models/product.dart';
 import '../providers/business_provider.dart';
 import '../providers/catalog_provider.dart';
+import 'customer_info_dialog.dart';
 
 class WhatsAppInquiryButton extends StatelessWidget {
   final Product product;
@@ -25,7 +26,11 @@ class WhatsAppInquiryButton extends StatelessWidget {
     final businessProvider = Provider.of<BusinessProvider>(context, listen: false);
     final catalogProvider = Provider.of<CatalogProvider>(context, listen: false);
 
+    final result = await HZCustomerInfoDialog.show(context);
+    if (result == null) return; // user cancelled
+
     final rawNumber = businessProvider.settings.whatsAppNumber.replaceAll(RegExp(r'[^\d+]'), '');
+    final cleanWa = rawNumber.startsWith('+') ? rawNumber.substring(1) : rawNumber;
     final dept = catalogProvider.getDepartmentById(product.departmentId)?.name ?? 'Apparel';
     final cat = catalogProvider.getCategoryById(product.categoryId)?.name ?? 'Clothing';
     final currentUrl = '${Uri.base.origin}/product/${product.slug}';
@@ -38,13 +43,30 @@ class WhatsAppInquiryButton extends StatelessWidget {
         ? '\n• Price: ${product.price}'
         : '';
 
+    final customerName = result['name'] ?? '';
+    final customerPhone = result['phone'] ?? '';
+    final customerNote = result['note'] ?? '';
+
+    final detailsBuffer = StringBuffer();
+    detailsBuffer.writeln('🛍️ *PRODUCT INQUIRY - HASH ZONE*');
+    detailsBuffer.writeln('──────────────────');
+    detailsBuffer.writeln('👤 *Customer Details*');
+    detailsBuffer.writeln('   • Name: ${customerName.trim()}');
+    if (customerPhone.trim().isNotEmpty) {
+      detailsBuffer.writeln('   • Phone: ${customerPhone.trim()}');
+    }
+    if (customerNote.trim().isNotEmpty) {
+      detailsBuffer.writeln('   • Note: ${customerNote.trim()}');
+    }
+    detailsBuffer.writeln('──────────────────');
+
     final message = '''
-Hello HASH ZONE,
+${detailsBuffer.toString()}Hello HASH ZONE,
 
 I am interested in inquiring about this item from your store:
 
 • Product Name: ${product.title}
-• SKU: ${product.sku}$sizeInfo
+• SKU CODE: "${product.sku}"$sizeInfo
 • Segment: $dept
 • Category: $cat$priceInfo
 • URL: $currentUrl
@@ -53,7 +75,7 @@ Could you please provide availability and order details?
 ''';
 
     final encodedMessage = Uri.encodeComponent(message);
-    final whatsappUri = Uri.parse('https://wa.me/$rawNumber?text=$encodedMessage');
+    final whatsappUri = Uri.parse('https://wa.me/$cleanWa?text=$encodedMessage');
 
     if (await canLaunchUrl(whatsappUri)) {
       await launchUrl(whatsappUri, mode: LaunchMode.externalApplication);
