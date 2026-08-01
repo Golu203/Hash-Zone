@@ -468,6 +468,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     child: cartQty > 0
                         ? HZQuantityStepper(
                             product: product,
+                            initialValue: cartQty,
                             height: 48.0,
                             isSmall: false,
                           )

@@ -3,8 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:go_router/go_router.dart';
-import '../main.dart';
 import '../models/product.dart';
 import '../providers/cart_provider.dart';
 import '../providers/business_provider.dart';
@@ -92,44 +90,10 @@ Please confirm availability and ordering details. Thank you!
     if (context.mounted) Navigator.pop(context);
   }
 
-  static Timer? _snackBarTimer;
-
   void _handleAddToCartSubmit(BuildContext context, double unitPrice) {
     final cart = Provider.of<CartProvider>(context, listen: false);
     cart.addItem(widget.product, _selectedSize, unitPrice, _quantity);
-
-    final parentCtx = widget.parentContext;
     Navigator.pop(context);
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!parentCtx.mounted) return;
-      final router = GoRouter.of(parentCtx);
-
-      _snackBarTimer?.cancel();
-      rootScaffoldMessengerKey.currentState?.hideCurrentSnackBar();
-
-      rootScaffoldMessengerKey.currentState?.showSnackBar(
-        SnackBar(
-          content: Text('"${widget.product.title}" ($_selectedSize) added to cart.'),
-          duration: const Duration(seconds: 6),
-          backgroundColor: Colors.black,
-          behavior: SnackBarBehavior.floating,
-          action: SnackBarAction(
-            label: 'VIEW CART',
-            textColor: Colors.white,
-            onPressed: () {
-              _snackBarTimer?.cancel();
-              rootScaffoldMessengerKey.currentState?.hideCurrentSnackBar();
-              router.go('/cart');
-            },
-          ),
-        ),
-      );
-
-      _snackBarTimer = Timer(const Duration(seconds: 6), () {
-        rootScaffoldMessengerKey.currentState?.hideCurrentSnackBar();
-      });
-    });
   }
 
   @override

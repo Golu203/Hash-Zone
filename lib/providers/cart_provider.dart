@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/product.dart';
+import '../widgets/cart_notification.dart';
 
 class CartItem {
   final String productId;
@@ -151,6 +152,8 @@ class CartProvider extends ChangeNotifier {
       (item) => item.productId == product.id && item.size == size,
     );
 
+    final isNewItemOrSize = (existingIndex == -1);
+
     if (existingIndex != -1) {
       _items[existingIndex] = _items[existingIndex].copyWith(
         quantity: _items[existingIndex].quantity + quantity,
@@ -168,6 +171,10 @@ class CartProvider extends ChangeNotifier {
     }
     notifyListeners();
     _saveCart();
+
+    if (isNewItemOrSize) {
+      HZCartNotification.showItemAdded(product.title, size: size);
+    }
   }
 
   void updateQuantity(String productId, String size, int newQty) {
