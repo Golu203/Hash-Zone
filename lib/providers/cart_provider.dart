@@ -242,7 +242,12 @@ class CartProvider extends ChangeNotifier {
     _saveCart();
   }
 
-  String generateWhatsAppMessage({String? customerName, String? customerPhone, String? customerNote}) {
+  String generateWhatsAppMessage({
+    String? customerName,
+    String? customerPhone,
+    String? customerNote,
+    Map<String, String>? productSkus,
+  }) {
     final buffer = StringBuffer();
     buffer.writeln('🛍️ *NEW ORDER INQUIRY - HASH ZONE*');
     buffer.writeln('──────────────────');
@@ -268,8 +273,11 @@ class CartProvider extends ChangeNotifier {
     grouped.forEach((productId, itemsList) {
       final firstItem = itemsList.first;
       buffer.writeln('$index. *${firstItem.title}*');
-      if (firstItem.sku.trim().isNotEmpty) {
-        buffer.writeln('   • SKU: ${firstItem.sku.trim()}');
+      
+      final skuFromMap = productSkus?[productId] ?? '';
+      final sku = skuFromMap.isNotEmpty ? skuFromMap : firstItem.sku;
+      if (sku.trim().isNotEmpty) {
+        buffer.writeln('   • SKU CODE: "${sku.trim()}"');
       }
       
       double productTotal = 0.0;

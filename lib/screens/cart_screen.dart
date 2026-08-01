@@ -14,17 +14,23 @@ class CartScreen extends StatelessWidget {
   const CartScreen({super.key});
 
   Future<void> _checkoutWhatsApp(BuildContext context, CartProvider cart, BusinessProvider business) async {
+    final catalog = Provider.of<CatalogProvider>(context, listen: false);
+    final productSkus = {
+      for (var p in catalog.products) p.id: p.sku
+    };
+
     final result = await showDialog<Map<String, String>>(
       context: context,
       barrierDismissible: false,
       builder: (ctx) => const _CustomerInfoDialog(),
     );
-    if (result == null) return; // user dismissed
+    if (result == null) return;
 
     final message = cart.generateWhatsAppMessage(
       customerName: result['name'],
       customerPhone: result['phone'],
       customerNote: result['note'],
+      productSkus: productSkus,
     );
     final waNum = business.settings.whatsAppNumber.replaceAll(RegExp(r'[^\d+]'), '');
     final cleanWa = waNum.startsWith('+') ? waNum.substring(1) : waNum;
