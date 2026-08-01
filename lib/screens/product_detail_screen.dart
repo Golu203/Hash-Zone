@@ -60,6 +60,36 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     final isDesktop = MediaQuery.of(context).size.width >= 900;
     final currencyFormatter = NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0);
 
+    // ── Show loading while catalog is still fetching from Firestore ──────────
+    // This is the core fix for the "Redirecting…" / "Product Not Found" bug
+    // when a product URL is opened directly from WhatsApp or an external link.
+    if (catalog.isLoading) {
+      return Scaffold(
+        backgroundColor: Colors.white,
+        appBar: const HZNavBar(),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const SizedBox(
+                width: 40,
+                height: 40,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                'Loading product…',
+                style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF666666)),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     Product? product;
     try {
       product = catalog.products.firstWhere((p) {
@@ -84,6 +114,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       product = null;
     }
 
+    // Canonicalize URL to the product's stable slug (only after catalog is loaded)
     if (product != null && widget.productId != product.slug) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         context.go('/product/${product!.slug}');

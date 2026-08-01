@@ -18,6 +18,7 @@ import '../screens/error_screen.dart';
 import '../services/auth_service.dart';
 import '../providers/business_provider.dart';
 import '../screens/cart_screen.dart';
+import '../screens/install_screen.dart';
 import 'package:provider/provider.dart';
 
 final appRouter = GoRouter(
@@ -75,6 +76,10 @@ final appRouter = GoRouter(
         }
         return const CartScreen();
       },
+    ),
+    GoRoute(
+      path: '/install',
+      builder: (context, state) => const InstallScreen(),
     ),
 
     // Admin Portal Routes

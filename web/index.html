@@ -205,6 +205,39 @@
     }, false);
   </script>
 
+  <script>
+    // ── PWA Install Prompt helpers ────────────────────────────────────────────
+    // Capture the beforeinstallprompt event early (before Flutter loads).
+    // The InstallScreen in Flutter calls these via dart:js interop.
+    var _hzDeferredPrompt = null;
+
+    window.addEventListener('beforeinstallprompt', function(e) {
+      e.preventDefault();
+      _hzDeferredPrompt = e;
+    });
+
+    // Returns true if a native install prompt is currently available.
+    window.hzIsInstallPromptAvailable = function() {
+      return _hzDeferredPrompt !== null;
+    };
+
+    // Returns true if the app is already running as an installed PWA.
+    window.hzIsStandalone = function() {
+      return window.matchMedia('(display-mode: standalone)').matches
+          || window.navigator.standalone === true;
+    };
+
+    // Triggers the deferred install prompt. Returns 'accepted', 'dismissed', or 'unavailable'.
+    window.hzTriggerInstall = function() {
+      if (!_hzDeferredPrompt) return 'unavailable';
+      _hzDeferredPrompt.prompt();
+      return _hzDeferredPrompt.userChoice.then(function(choiceResult) {
+        _hzDeferredPrompt = null;
+        return choiceResult.outcome; // 'accepted' or 'dismissed'
+      });
+    };
+  </script>
+
   <script src="flutter_bootstrap.js" async></script>
 </body>
 
