@@ -97,7 +97,7 @@ class _InstallScreenState extends State<InstallScreen> {
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(24),
                         child: Image.asset(
-                          'icons/Icon-192.png',
+                          'assets/images/logo_new.jpg',
                           fit: BoxFit.cover,
                         ),
                       ),
@@ -131,10 +131,14 @@ class _InstallScreenState extends State<InstallScreen> {
 
                     // Benefits
                     _buildBenefits(isMobile),
-                    const SizedBox(height: 48),
+                    const SizedBox(height: 40),
 
-                    // Install CTA area
+                    // Install CTA area (Always visible unless already installed)
                     _buildInstallSection(isMobile),
+                    const SizedBox(height: 40),
+
+                    // Manual Instructions (Always visible at the bottom)
+                    _buildManualInstructions(isMobile),
                   ],
                 ),
               ),
@@ -211,12 +215,57 @@ class _InstallScreenState extends State<InstallScreen> {
       return _buildAlreadyInstalled(isMobile);
     }
 
-    if (_promptAvailable == true) {
-      return _buildNativePromptSection(isMobile);
-    }
-
-    // Prompt not available — show manual instructions
-    return _buildManualInstructions(isMobile);
+    // Always display the primary install button.
+    // If native prompt is not available, we show a SnackBar directing users to the manual instructions.
+    return Column(
+      children: [
+        SizedBox(
+          width: double.infinity,
+          height: 52,
+          child: ElevatedButton.icon(
+            onPressed: () {
+              if (_promptAvailable == true) {
+                _triggerInstall();
+              } else {
+                ScaffoldMessenger.of(context).clearSnackBars();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      _detectIOS()
+                          ? 'Native installation not supported on iOS Safari. Please follow the instructions below.'
+                          : 'Native installation prompt not supported on this browser. Please see instructions below.',
+                      style: GoogleFonts.inter(fontSize: 13),
+                    ),
+                    behavior: SnackBarBehavior.floating,
+                    backgroundColor: Colors.black,
+                    duration: const Duration(seconds: 4),
+                  ),
+                );
+              }
+            },
+            icon: const Icon(Icons.download_outlined, color: Colors.white, size: 20),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.black,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              elevation: 0,
+            ),
+            label: Text(
+              'Install App',
+              style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 15),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          _promptAvailable == true
+              ? 'Your browser will prompt you to install HashZone as an app.'
+              : 'Click the button or use the steps below to install on your device.',
+          textAlign: TextAlign.center,
+          style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF888888)),
+        ),
+      ],
+    );
   }
 
   Widget _buildAlreadyInstalled(bool isMobile) {
@@ -255,36 +304,7 @@ class _InstallScreenState extends State<InstallScreen> {
     );
   }
 
-  Widget _buildNativePromptSection(bool isMobile) {
-    return Column(
-      children: [
-        SizedBox(
-          width: double.infinity,
-          height: 52,
-          child: ElevatedButton.icon(
-            onPressed: _triggerInstall,
-            icon: const Icon(Icons.download_outlined, color: Colors.white, size: 20),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.black,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              elevation: 0,
-            ),
-            label: Text(
-              'Install App',
-              style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 15),
-            ),
-          ),
-        ),
-        const SizedBox(height: 12),
-        Text(
-          'Your browser will prompt you to install HashZone as an app.',
-          textAlign: TextAlign.center,
-          style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF888888)),
-        ),
-      ],
-    );
-  }
+
 
   Widget _buildManualInstructions(bool isMobile) {
     final isIOS = _detectIOS();
