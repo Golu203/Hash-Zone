@@ -306,6 +306,8 @@ class _CompactInquiryButton extends StatelessWidget {
             product: product,
             height: isSmall ? 28 : 36,
             isSmall: isSmall,
+            isFullWidth: true,
+            showNote: false,
           ),
         ),
       );

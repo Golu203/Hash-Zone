@@ -442,7 +442,7 @@ class AboutScreen extends StatelessWidget {
         children: [
           Text(
             year,
-            style: GoogleFonts.cormorantGaramond(
+            style: GoogleFonts.playfairDisplay(
               fontSize: 48,
               fontWeight: FontWeight.w900,
               letterSpacing: 1.5,

@@ -11,6 +11,8 @@ class HZQuantityStepper extends StatefulWidget {
   final Function(int value, bool isValid)? onChanged;
   final bool isSmall;
   final double height;
+  final bool isFullWidth;
+  final bool showNote;
 
   const HZQuantityStepper({
     super.key,
@@ -21,6 +23,8 @@ class HZQuantityStepper extends StatefulWidget {
     this.onChanged,
     this.isSmall = false,
     this.height = 36.0,
+    this.isFullWidth = false,
+    this.showNote = true,
   }) : initialValue = initialValue ?? value ?? 5;
 
   @override
@@ -168,7 +172,7 @@ class _HZQuantityStepperState extends State<HZQuantityStepper> {
       children: [
         // Stepper Input Row
         SizedBox(
-          width: widget.isSmall ? 100 : 130,
+          width: widget.isFullWidth ? double.infinity : (widget.isSmall ? 100 : 130),
           child: Container(
             height: widget.height,
             decoration: BoxDecoration(
@@ -244,7 +248,7 @@ class _HZQuantityStepperState extends State<HZQuantityStepper> {
           ),
         ),
         // Information Note
-        if (!widget.isSmall) ...[
+        if (widget.showNote && !widget.isSmall) ...[
           const SizedBox(height: 8),
           Text(
             'HashZone is a wholesale supplier. Orders are accepted only in multiples of 5 pieces (5, 10, 15, 20...).',
