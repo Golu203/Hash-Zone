@@ -337,7 +337,7 @@ class ProductsScreen extends StatelessWidget {
         final cardWidth =
             (availW - spacing * (crossAxisCount - 1)) / crossAxisCount;
         // Image is 3:4 portrait + fixed info section height
-        final infoH = isMobile ? 175.0 : 190.0;
+        final infoH = isMobile ? 180.0 : 195.0;
         final cardHeight = cardWidth * (4 / 3) + infoH;
 
         return GridView.builder(

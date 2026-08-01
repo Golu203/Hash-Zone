@@ -256,7 +256,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         final crossAxisCount = isMobile ? 2 : (availW < 800 ? 3 : 4);
                         final spacing = isMobile ? 10.0 : 20.0;
                         final cardWidth = (availW - spacing * (crossAxisCount - 1)) / crossAxisCount;
-                        final infoH = isMobile ? 175.0 : 190.0;
+                        final infoH = isMobile ? 180.0 : 195.0;
                         final cardHeight = cardWidth * (4 / 3) + infoH;
 
                         return GridView.builder(

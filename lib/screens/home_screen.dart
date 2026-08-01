@@ -218,7 +218,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         final gap = 20.0;
                         final cw = (sw - (cols - 1) * gap) / cols;
                         final isMobile = sw < 460;
-                        final infoH = isMobile ? 175.0 : 190.0;
+                        final infoH = isMobile ? 180.0 : 195.0;
                         return Wrap(
                           spacing: gap,
                           runSpacing: gap,
@@ -264,7 +264,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         final gap = 20.0;
                         final cw = (sw - (cols - 1) * gap) / cols;
                         final isMobile = sw < 460;
-                        final infoH = isMobile ? 175.0 : 190.0;
+                        final infoH = isMobile ? 180.0 : 195.0;
                         return Wrap(
                           spacing: gap,
                           runSpacing: gap,
