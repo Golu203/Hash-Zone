@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../screens/about_screen.dart';
@@ -70,7 +71,25 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/cart',
       builder: (context, state) {
-        final business = Provider.of<BusinessProvider>(context, listen: false);
+        final business = Provider.of<BusinessProvider>(context);
+        // ── Wait for Firestore before making the cart enable/disable decision.
+        // Without this guard, the default enableShoppingCart = false kicks in on
+        // page refresh and silently redirects to HomeScreen while the URL stays /cart.
+        if (business.isLoading) {
+          return const Scaffold(
+            backgroundColor: Colors.white,
+            body: Center(
+              child: SizedBox(
+                width: 36,
+                height: 36,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
+                ),
+              ),
+            ),
+          );
+        }
         if (!business.settings.enableShoppingCart) {
           return const HomeScreen();
         }

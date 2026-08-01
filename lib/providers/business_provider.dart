@@ -7,8 +7,10 @@ class BusinessProvider extends ChangeNotifier {
   final FirestoreService _firestoreService;
   BusinessSettings _settings = BusinessSettings();
   StreamSubscription<BusinessSettings>? _sub;
+  bool _isLoading = true;
 
   BusinessSettings get settings => _settings;
+  bool get isLoading => _isLoading;
 
   BusinessProvider(this._firestoreService) {
     _initStream();
@@ -17,6 +19,7 @@ class BusinessProvider extends ChangeNotifier {
   void _initStream() {
     _sub = _firestoreService.streamBusinessSettings().listen((newSettings) {
       _settings = newSettings;
+      _isLoading = false;
       notifyListeners();
     });
   }
