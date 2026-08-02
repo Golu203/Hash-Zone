@@ -152,7 +152,7 @@ class CartProvider extends ChangeNotifier {
 
   void addItem(Product product, String size, double price, int quantity) {
     final domain = Uri.base.origin;
-    final productUrl = '$domain/product/${product.slug}';
+    final productUrl = '$domain/#/product/${product.slug}';
 
     final existingIndex = _items.indexWhere(
       (item) => item.productId == product.id && item.size == size,

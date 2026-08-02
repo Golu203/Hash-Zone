@@ -33,7 +33,7 @@ class WhatsAppInquiryButton extends StatelessWidget {
     final cleanWa = rawNumber.startsWith('+') ? rawNumber.substring(1) : rawNumber;
     final dept = catalogProvider.getDepartmentById(product.departmentId)?.name ?? 'Apparel';
     final cat = catalogProvider.getCategoryById(product.categoryId)?.name ?? 'Clothing';
-    final currentUrl = '${Uri.base.origin}/product/${product.slug}';
+    final currentUrl = '${Uri.base.origin}/#/product/${product.slug}';
 
     final sizeInfo = (selectedSize != null && selectedSize!.isNotEmpty)
         ? '\n• Selected Size: $selectedSize'

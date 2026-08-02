@@ -283,7 +283,7 @@ class _CompactInquiryButton extends StatelessWidget {
     final cleanWa = rawNumber.startsWith('+') ? rawNumber.substring(1) : rawNumber;
     final dept = catalogProvider.getDepartmentById(product.departmentId)?.name ?? 'Apparel';
     final cat = catalogProvider.getCategoryById(product.categoryId)?.name ?? 'Clothing';
-    final productUrl = '${Uri.base.origin}/product/${product.slug}';
+    final productUrl = '${Uri.base.origin}/#/product/${product.slug}';
 
     final priceInfo = product.price.trim().isNotEmpty
         ? '\n• Price: ${product.price}'

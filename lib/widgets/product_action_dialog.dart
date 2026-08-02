@@ -63,7 +63,7 @@ class _HZProductActionDialogState extends State<HZProductActionDialog> {
     
     final dept = catalog.getDepartmentById(widget.product.departmentId)?.name ?? 'Apparel';
     final cat = catalog.getCategoryById(widget.product.categoryId)?.name ?? 'Clothing';
-    final productUrl = '${Uri.base.origin}/product/${widget.product.slug}';
+    final productUrl = '${Uri.base.origin}/#/product/${widget.product.slug}';
 
     final customerName = result['name'] ?? '';
     final customerPhone = result['phone'] ?? '';
