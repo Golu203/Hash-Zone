@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../providers/supply_network_provider.dart';
@@ -365,6 +366,10 @@ class _AdminSupplyNetworkScreenState extends State<AdminSupplyNetworkScreen> {
       appBar: AppBar(
         backgroundColor: const Color(0xFF000000),
         elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => context.go('/admin/dashboard'),
+        ),
         title: Text(
           'SUPPLY NETWORK MANAGEMENT',
           style: GoogleFonts.cormorantGaramond(
