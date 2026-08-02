@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../models/product.dart';
+import '../providers/catalog_provider.dart';
 import '../providers/business_provider.dart';
 import '../providers/cart_provider.dart';
 import 'product_action_dialog.dart';
