@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
 import '../screens/about_screen.dart';
 import '../screens/admin/admin_banners_screen.dart';
@@ -18,33 +19,66 @@ import '../screens/products_screen.dart';
 import '../screens/error_screen.dart';
 import '../services/auth_service.dart';
 import '../providers/business_provider.dart';
+import '../providers/customer_auth_provider.dart';
 import '../screens/cart_screen.dart';
 import '../screens/install_screen.dart';
-import 'package:provider/provider.dart';
+import '../screens/auth/customer_login_screen.dart';
+import '../screens/auth/customer_signup_screen.dart';
+import '../screens/auth/forgot_password_screen.dart';
+import '../screens/onboarding/customer_onboarding_screen.dart';
 
 final appRouter = GoRouter(
   initialLocation: '/',
   errorBuilder: (context, state) => ErrorScreen(message: state.error?.toString()),
   redirect: (context, state) {
     final location = state.uri.toString();
-    final isGoingToAdmin = location.startsWith('/admin');
-    final isGoingToLogin = location == '/admin/login';
-    final isAuthenticated = AuthService().isAuthenticated;
 
-    // Enforce authentication for ALL admin panel routes
-    if (isGoingToAdmin && !isGoingToLogin && !isAuthenticated) {
+    // ── Admin Auth Guard (unchanged) ─────────────────────────────────────────
+    final isGoingToAdmin = location.startsWith('/admin');
+    final isGoingToAdminLogin = location == '/admin/login';
+    final isAdminAuthenticated = AuthService().isAuthenticated;
+
+    if (isGoingToAdmin && !isGoingToAdminLogin && !isAdminAuthenticated) {
       return '/admin/login';
     }
-
-    // Redirect to dashboard if logged-in user hits /admin/login
-    if (isGoingToLogin && isAuthenticated) {
+    if (isGoingToAdminLogin && isAdminAuthenticated) {
       return '/admin/dashboard';
+    }
+
+    // ── Customer Auth Guard ──────────────────────────────────────────────────
+    final customerAuth = Provider.of<CustomerAuthProvider>(context, listen: false);
+    final isCustomerLoading = customerAuth.isLoading;
+
+    // Let auth pages and public pages pass through freely
+    final isAuthRoute = location.startsWith('/login') ||
+        location.startsWith('/signup') ||
+        location.startsWith('/forgot-password') ||
+        location.startsWith('/onboarding') ||
+        isGoingToAdmin;
+
+    if (isAuthRoute) return null;
+
+    // Protected customer routes
+    final protectedRoutes = ['/profile', '/orders'];
+    final isProtected = protectedRoutes.any((r) => location.startsWith(r));
+
+    if (isProtected && !isCustomerLoading && !customerAuth.isAuthenticated) {
+      return '/login?redirect=${Uri.encodeComponent(location)}';
+    }
+
+    // After authenticated: if onboarding incomplete, redirect to onboarding
+    // (except when already going there or to an auth screen)
+    if (!isAuthRoute &&
+        !isCustomerLoading &&
+        customerAuth.isAuthenticated &&
+        customerAuth.needsOnboarding) {
+      return '/onboarding?redirect=${Uri.encodeComponent(location)}';
     }
 
     return null;
   },
   routes: [
-    // Customer Routes
+    // ── Customer Routes (Public) ───────────────────────────────────────────────
     GoRoute(
       path: '/',
       builder: (context, state) => const HomeScreen(),
@@ -101,10 +135,41 @@ final appRouter = GoRouter(
       builder: (context, state) => const InstallScreen(),
     ),
 
-    // Admin Portal Routes
+    // ── Customer Auth Routes ───────────────────────────────────────────────────
+    GoRoute(
+      path: '/login',
+      builder: (context, state) {
+        final redirect = state.uri.queryParameters['redirect'];
+        return CustomerLoginScreen(redirectTo: redirect);
+      },
+    ),
+    GoRoute(
+      path: '/signup',
+      builder: (context, state) {
+        final redirect = state.uri.queryParameters['redirect'];
+        return CustomerSignupScreen(redirectTo: redirect);
+      },
+    ),
+    GoRoute(
+      path: '/forgot-password',
+      builder: (context, state) {
+        final redirect = state.uri.queryParameters['redirect'];
+        return ForgotPasswordScreen(redirectTo: redirect);
+      },
+    ),
+    GoRoute(
+      path: '/onboarding',
+      builder: (context, state) {
+        final redirect = state.uri.queryParameters['redirect'];
+        return CustomerOnboardingScreen(redirectTo: redirect);
+      },
+    ),
+
+    // ── Admin Portal Routes (unchanged) ───────────────────────────────────────
     GoRoute(
       path: '/admin',
-      redirect: (context, state) => AuthService().isAuthenticated ? '/admin/dashboard' : '/admin/login',
+      redirect: (context, state) =>
+          AuthService().isAuthenticated ? '/admin/dashboard' : '/admin/login',
     ),
     GoRoute(
       path: '/admin/login',
