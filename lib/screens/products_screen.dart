@@ -10,8 +10,32 @@ import '../widgets/skeleton_loaders.dart';
 
 import '../utils/seo_helper.dart';
 
-class ProductsScreen extends StatelessWidget {
+import '../services/navigation_memory_service.dart';
+
+class ProductsScreen extends StatefulWidget {
   const ProductsScreen({super.key});
+
+  @override
+  State<ProductsScreen> createState() => _ProductsScreenState();
+}
+
+class _ProductsScreenState extends State<ProductsScreen> {
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    NavigationMemoryService().attachScrollRestoration(
+      controller: _scrollController,
+      route: '/products',
+    );
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -33,6 +57,7 @@ class ProductsScreen extends StatelessWidget {
       appBar: const HZNavBar(),
       endDrawer: !isDesktop ? const HZMobileDrawer() : null,
       body: SingleChildScrollView(
+        controller: _scrollController,
         child: Column(
           children: [
             // Page Header Banner

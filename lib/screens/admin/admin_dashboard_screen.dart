@@ -6,8 +6,15 @@ import '../../providers/catalog_provider.dart';
 import '../../providers/supply_network_provider.dart';
 import '../../services/auth_service.dart';
 
-class AdminDashboardScreen extends StatelessWidget {
+class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
+
+  @override
+  State<AdminDashboardScreen> createState() => _AdminDashboardScreenState();
+}
+
+class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
+  static String? currentSection;
 
   @override
   Widget build(BuildContext context) {
@@ -45,6 +52,7 @@ class AdminDashboardScreen extends StatelessWidget {
             icon: const Icon(Icons.logout, color: Colors.white),
             tooltip: 'Sign Out',
             onPressed: () async {
+              currentSection = null; // Reset section state on logout
               await AuthService().signOut();
               if (context.mounted) context.go('/admin/login');
             },
@@ -105,137 +113,121 @@ class AdminDashboardScreen extends StatelessWidget {
               ),
             ),
 
-            Text(
-              'OVERVIEW STATISTICS',
-              style: GoogleFonts.inter(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1.8,
-                color: const Color(0xFF000000),
+            if (currentSection == null) ...[
+              Text(
+                'OVERVIEW STATISTICS',
+                style: GoogleFonts.inter(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.8,
+                  color: const Color(0xFF000000),
+                ),
               ),
-            ),
-            const SizedBox(height: 16),
+              const SizedBox(height: 16),
 
-            // KPI Summary Row (Responsive Grid: wider aspect ratio on mobile to fit the horizontal row layout)
-            GridView.count(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisCount: isDesktop ? 5 : 2,
-              crossAxisSpacing: isDesktop ? 16 : 12,
-              mainAxisSpacing: isDesktop ? 16 : 12,
-              childAspectRatio: isDesktop ? 1.3 : 2.2,
-              children: [
-                _kpiCard(context, 'TOTAL PRODUCTS', catalog.products.length.toString(), Icons.checkroom),
-                _kpiCard(context, 'SEGMENTS', catalog.departments.length.toString(), Icons.domain),
-                _kpiCard(context, 'CATEGORIES', catalog.categories.length.toString(), Icons.category),
-                _kpiCard(context, 'HERO BANNERS', catalog.heroBanners.length.toString(), Icons.view_carousel),
-                _kpiCard(context, 'SUPPLY STATES', supplyNetwork.states.length.toString(), Icons.map_outlined),
-              ],
-            ),
-
-            const SizedBox(height: 40),
-
-            Text(
-              'STORE MANAGEMENT MODULES',
-              style: GoogleFonts.inter(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1.8,
-                color: const Color(0xFF000000),
+              // KPI Summary Row
+              GridView.count(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                crossAxisCount: isDesktop ? 5 : 2,
+                crossAxisSpacing: isDesktop ? 16 : 12,
+                mainAxisSpacing: isDesktop ? 16 : 12,
+                childAspectRatio: isDesktop ? 1.3 : 2.2,
+                children: [
+                  _kpiCard(context, 'TOTAL PRODUCTS', catalog.products.length.toString(), Icons.checkroom),
+                  _kpiCard(context, 'SEGMENTS', catalog.departments.length.toString(), Icons.domain),
+                  _kpiCard(context, 'CATEGORIES', catalog.categories.length.toString(), Icons.category),
+                  _kpiCard(context, 'HERO BANNERS', catalog.heroBanners.length.toString(), Icons.view_carousel),
+                  _kpiCard(context, 'SUPPLY STATES', supplyNetwork.states.length.toString(), Icons.map_outlined),
+                ],
               ),
-            ),
-            const SizedBox(height: 16),
 
-            // Modules Layout (Responsive: Grid on desktop, dynamically-sized Column on mobile to avoid clipping)
-            isDesktop
-                ? GridView.count(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 24,
-                    mainAxisSpacing: 24,
-                    childAspectRatio: 2.2,
-                    children: [
-                      _moduleCard(
-                        context,
-                        title: 'Products Management',
-                        subtitle: 'Add, edit, assign sizes, re-order Cloudinary images, toggle featured & offers.',
-                        icon: Icons.inventory_2_outlined,
-                        route: '/admin/products',
+              const SizedBox(height: 40),
+
+              Text(
+                'PRIMARY MANAGEMENT CARDS',
+                style: GoogleFonts.inter(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.8,
+                  color: const Color(0xFF000000),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // 4 Primary Cards Layout
+              isDesktop
+                  ? GridView.count(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      crossAxisCount: 2,
+                      crossAxisSpacing: 24,
+                      mainAxisSpacing: 24,
+                      childAspectRatio: 2.2,
+                      children: _buildPrimaryCards(),
+                    )
+                  : Column(
+                      children: _buildPrimaryCardsWithSpacing(),
+                    ),
+            ] else ...[
+              // Section Sub-modules View
+              Row(
+                children: [
+                  InkWell(
+                    onTap: () {
+                      setState(() {
+                        currentSection = null;
+                      });
+                    },
+                    borderRadius: BorderRadius.circular(20),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.arrow_back, color: Colors.black, size: 20),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Back to Dashboard',
+                            style: GoogleFonts.inter(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black,
+                            ),
+                          ),
+                        ],
                       ),
-                      _moduleCard(
-                        context,
-                        title: 'Taxonomies & Sizes',
-                        subtitle: 'Manage Segments, toggle Sizes Applicable on/off, set Categories & Subcategories.',
-                        icon: Icons.account_tree_outlined,
-                        route: '/admin/taxonomy',
-                      ),
-                      _moduleCard(
-                        context,
-                        title: 'Hero Banners & Offers',
-                        subtitle: 'Upload homepage hero slider banners and promotional headlines.',
-                        icon: Icons.view_carousel_outlined,
-                        route: '/admin/banners',
-                      ),
-                      _moduleCard(
-                        context,
-                        title: 'Business & Contact Settings',
-                        subtitle: 'Edit WhatsApp number, call number, store address, and opening hours.',
-                        icon: Icons.settings_outlined,
-                        route: '/admin/settings',
-                      ),
-                      _moduleCard(
-                        context,
-                        title: 'Supply Network',
-                        subtitle: 'Add, edit, or delete cities and states in the India supply network map.',
-                        icon: Icons.map_outlined,
-                        route: '/admin/supply-network',
-                      ),
-                    ],
-                  )
-                : Column(
-                    children: [
-                      _moduleCard(
-                        context,
-                        title: 'Products Management',
-                        subtitle: 'Add, edit, assign sizes, re-order Cloudinary images, toggle featured & offers.',
-                        icon: Icons.inventory_2_outlined,
-                        route: '/admin/products',
-                      ),
-                      const SizedBox(height: 16),
-                      _moduleCard(
-                        context,
-                        title: 'Taxonomies & Sizes',
-                        subtitle: 'Manage Segments, toggle Sizes Applicable on/off, set Categories & Subcategories.',
-                        icon: Icons.account_tree_outlined,
-                        route: '/admin/taxonomy',
-                      ),
-                      const SizedBox(height: 16),
-                      _moduleCard(
-                        context,
-                        title: 'Hero Banners & Offers',
-                        subtitle: 'Upload homepage hero slider banners and promotional headlines.',
-                        icon: Icons.view_carousel_outlined,
-                        route: '/admin/banners',
-                      ),
-                      const SizedBox(height: 16),
-                      _moduleCard(
-                        context,
-                        title: 'Business & Contact Settings',
-                        subtitle: 'Edit WhatsApp number, call number, store address, and opening hours.',
-                        icon: Icons.settings_outlined,
-                        route: '/admin/settings',
-                      ),
-                      const SizedBox(height: 16),
-                      _moduleCard(
-                        context,
-                        title: 'Supply Network',
-                        subtitle: 'Add, edit, or delete cities and states in the India supply network map.',
-                        icon: Icons.map_outlined,
-                        route: '/admin/supply-network',
-                      ),
-                    ],
+                    ),
                   ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Text(
+                _getSectionTitle(currentSection!),
+                style: GoogleFonts.inter(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.8,
+                  color: const Color(0xFF000000),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Sub-modules grid/list
+              isDesktop
+                  ? GridView.count(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      crossAxisCount: 2,
+                      crossAxisSpacing: 24,
+                      mainAxisSpacing: 24,
+                      childAspectRatio: 2.2,
+                      children: _buildSectionModules(currentSection!),
+                    )
+                  : Column(
+                      children: _buildSectionModulesWithSpacing(currentSection!),
+                    ),
+            ],
 
             const SizedBox(height: 40),
 
@@ -287,6 +279,239 @@ class AdminDashboardScreen extends StatelessWidget {
                   ),
                 ],
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  List<Widget> _buildPrimaryCards() {
+    return [
+      _sectionLinkCard(
+        title: 'WEBSITE DESIGN & CONTROL',
+        subtitle: 'Products, Taxonomies, Sizes, Categories, Hero Banners, and India Supply Map.',
+        icon: Icons.web_outlined,
+        onTap: () => setState(() => currentSection = 'website'),
+      ),
+      _sectionLinkCard(
+        title: 'ORDERS & CUSTOMERS',
+        subtitle: 'Active & Previous Orders, Customer Management, and Payment Verifications.',
+        icon: Icons.people_alt_outlined,
+        onTap: () => setState(() => currentSection = 'orders'),
+      ),
+      _sectionLinkCard(
+        title: 'PAYMENT & BUSINESS SETTINGS',
+        subtitle: 'Bank Transfer details, payment configurations, and business contact settings.',
+        icon: Icons.storefront_outlined,
+        onTap: () => setState(() => currentSection = 'payment'),
+      ),
+      _sectionLinkCard(
+        title: 'DEVELOPER & SYSTEM',
+        subtitle: 'OCR Test Mode, connection diagnostics, backup & restores, system utilities.',
+        icon: Icons.construction_outlined,
+        onTap: () => setState(() => currentSection = 'developer'),
+      ),
+    ];
+  }
+
+  List<Widget> _buildPrimaryCardsWithSpacing() {
+    final cards = _buildPrimaryCards();
+    final List<Widget> spaced = [];
+    for (int i = 0; i < cards.length; i++) {
+      spaced.add(cards[i]);
+      if (i < cards.length - 1) {
+        spaced.add(const SizedBox(height: 16));
+      }
+    }
+    return spaced;
+  }
+
+  String _getSectionTitle(String section) {
+    switch (section) {
+      case 'website':
+        return 'WEBSITE DESIGN & CONTROL';
+      case 'orders':
+        return 'ORDERS & CUSTOMERS';
+      case 'payment':
+        return 'PAYMENT & BUSINESS SETTINGS';
+      case 'developer':
+        return 'DEVELOPER & SYSTEM';
+      default:
+        return '';
+    }
+  }
+
+  List<Widget> _buildSectionModules(String section) {
+    switch (section) {
+      case 'website':
+        return [
+          _moduleCard(
+            context,
+            title: 'Products Management',
+            subtitle: 'Add, edit, assign sizes, re-order Cloudinary images, toggle featured & offers.',
+            icon: Icons.inventory_2_outlined,
+            route: '/admin/products',
+          ),
+          _moduleCard(
+            context,
+            title: 'Taxonomies & Sizes',
+            subtitle: 'Manage Segments, toggle Sizes Applicable on/off, set Categories & Subcategories.',
+            icon: Icons.account_tree_outlined,
+            route: '/admin/taxonomy',
+          ),
+          _moduleCard(
+            context,
+            title: 'Hero Banners & Offers',
+            subtitle: 'Upload homepage hero slider banners and promotional headlines.',
+            icon: Icons.view_carousel_outlined,
+            route: '/admin/banners',
+          ),
+          _moduleCard(
+            context,
+            title: 'Supply Network',
+            subtitle: 'Add, edit, or delete cities and states in the India supply network map.',
+            icon: Icons.map_outlined,
+            route: '/admin/supply-network',
+          ),
+        ];
+      case 'orders':
+        return [
+          _moduleCard(
+            context,
+            title: 'Orders Management',
+            subtitle: 'Manage received, confirmed, dispatched, and rejected orders, view customer info & receipts.',
+            icon: Icons.shopping_bag_outlined,
+            route: '/admin/orders',
+          ),
+          _moduleCard(
+            context,
+            title: 'Payment Verification',
+            subtitle: 'Verify pending customer payment submissions, view screenshots, approve or reject.',
+            icon: Icons.fact_check_outlined,
+            route: '/admin/payment-verification',
+          ),
+        ];
+      case 'payment':
+        return [
+          _moduleCard(
+            context,
+            title: 'Business & Contact Settings',
+            subtitle: 'Edit WhatsApp number, call number, store address, and opening hours.',
+            icon: Icons.settings_outlined,
+            route: '/admin/settings',
+          ),
+          _moduleCard(
+            context,
+            title: 'Payment Configuration',
+            subtitle: 'Configure Bank Transfer details and Payment Instructions.',
+            icon: Icons.payments_outlined,
+            route: '/admin/payment-config',
+          ),
+        ];
+      case 'developer':
+        return [
+          _moduleCard(
+            context,
+            title: 'Developer & Testing',
+            subtitle: 'Toggle OCR test mode, check live system connection health, run diagnostics.',
+            icon: Icons.developer_mode_outlined,
+            route: '/admin/developer-testing',
+          ),
+          _moduleCard(
+            context,
+            title: 'Backup & Recovery',
+            subtitle: 'Create full database backups (.hzb) and perform smart restores.',
+            icon: Icons.settings_backup_restore_outlined,
+            route: '/admin/backup-recovery',
+          ),
+        ];
+      default:
+        return [];
+    }
+  }
+
+  List<Widget> _buildSectionModulesWithSpacing(String section) {
+    final modules = _buildSectionModules(section);
+    final List<Widget> spaced = [];
+    for (int i = 0; i < modules.length; i++) {
+      spaced.add(modules[i]);
+      if (i < modules.length - 1) {
+        spaced.add(const SizedBox(height: 16));
+      }
+    }
+    return spaced;
+  }
+
+  Widget _sectionLinkCard({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    final isMobile = MediaQuery.of(context).size.width < 600;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: EdgeInsets.all(isMobile ? 16 : 24),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFF000000), width: 2.0),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x14000000),
+              blurRadius: 10,
+              offset: Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(isMobile ? 12 : 16),
+              decoration: BoxDecoration(
+                color: const Color(0xFF000000),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Icon(icon, color: Colors.white, size: isMobile ? 22 : 28),
+            ),
+            SizedBox(width: isMobile ? 14 : 20),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    title,
+                    style: GoogleFonts.inter(
+                      fontSize: isMobile ? 14 : 16,
+                      fontWeight: FontWeight.bold,
+                      color: const Color(0xFF000000),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: GoogleFonts.inter(
+                      fontSize: isMobile ? 11 : 12,
+                      height: 1.3,
+                      color: const Color(0xFF444444),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: const Color(0xFF000000), width: 1.5),
+              ),
+              child: Icon(Icons.arrow_forward, color: const Color(0xFF000000), size: isMobile ? 12 : 16),
             ),
           ],
         ),

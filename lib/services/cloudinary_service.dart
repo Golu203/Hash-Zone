@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../models/cloudinary_image.dart';
 
@@ -78,6 +79,41 @@ class CloudinaryService {
     }
   }
 
+  /// Uploads any file (PDF, HTML, Image) to Cloudinary using the auto/raw/image endpoint.
+  Future<String> uploadFile({
+    required Uint8List bytes,
+    required String filename,
+    required String folder,
+    String resourceType = 'auto', // 'image', 'raw', or 'auto'
+    String cloudName = 'um227ll2',
+    String uploadPreset = 'hashzone_products',
+  }) async {
+    final effectiveCloudName = cloudName.isNotEmpty ? cloudName : 'um227ll2';
+    final effectivePreset = uploadPreset.isNotEmpty ? uploadPreset : 'hashzone_products';
+    final effectiveFolder = folder.isNotEmpty ? folder : 'hashzone/raw';
+
+    final uri = Uri.parse('https://api.cloudinary.com/v1_1/$effectiveCloudName/$resourceType/upload');
+
+    final request = http.MultipartRequest('POST', uri)
+      ..fields['upload_preset'] = effectivePreset
+      ..fields['folder'] = effectiveFolder
+      ..files.add(http.MultipartFile.fromBytes(
+        'file',
+        bytes,
+        filename: filename,
+      ));
+
+    final streamedResponse = await request.send();
+    final response = await http.Response.fromStream(streamedResponse);
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return data['secure_url'] ?? '';
+    } else {
+      throw Exception('Cloudinary upload failed [Status ${response.statusCode}]: ${response.body}');
+    }
+  }
+
   /// Triggers a secure serverless deletion request via Vercel backend using the image's publicId.
   Future<bool> deleteImage(String publicId) async {
     if (publicId.isEmpty) return false;
@@ -95,11 +131,11 @@ class CloudinaryService {
         final data = jsonDecode(response.body);
         return data['result'] == 'ok';
       } else {
-        print('Cloudinary deletion failed [Status ${response.statusCode}]: ${response.body}');
+        debugPrint('Cloudinary deletion failed [Status ${response.statusCode}]: ${response.body}');
         return false;
       }
     } catch (e) {
-      print('Error calling Cloudinary deletion API: $e');
+      debugPrint('Error calling Cloudinary deletion API: $e');
       return false;
     }
   }

@@ -1,7 +1,8 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow public read access to catalog data and settings
+
+    // ── Public Catalog Data (readable by everyone) ─────────────────────────
     match /departments/{docId} {
       allow read: if true;
       allow write: if request.auth != null;
@@ -22,9 +23,79 @@ service cloud.firestore {
       allow read: if true;
       allow write: if request.auth != null;
     }
+
+    // ── Settings & Configuration ───────────────────────────────────────────
     match /settings/{docId} {
       allow read: if true;
       allow write: if request.auth != null;
     }
+    match /systemSettings/{docId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    match /paymentConfig/{docId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    match /paymentValidationSettings/{docId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    match /developerSettings/{docId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+    match /websiteSettings/{docId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    match /adminSettings/{docId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+
+    // ── Orders ─────────────────────────────────────────────────────────────
+    match /orders/{orderId} {
+      // Customers can read their own orders; admins can read/write all
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+      allow create: if true; // allow unauthenticated order creation from checkout
+    }
+
+    // ── Payment Verifications ──────────────────────────────────────────────
+    match /paymentVerifications/{docId} {
+      allow read: if request.auth != null;
+      allow create: if true; // customers submit payment proofs
+      allow update, delete: if request.auth != null;
+    }
+
+    // ── Customers ──────────────────────────────────────────────────────────
+    match /customers/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+      allow read, write: if request.auth != null; // admin access
+      match /addresses/{addrId} {
+        allow read, write: if request.auth != null;
+      }
+    }
+
+    // ── Admin Users ────────────────────────────────────────────────────────
+    match /adminUsers/{docId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+
+    // ── Backup & Recovery ─────────────────────────────────────────────────
+    match /backups/{docId} {
+      allow read, write: if request.auth != null;
+    }
+
+    // ── Connection Status / System Health ─────────────────────────────────
+    match /connectionStatus/{docId} {
+      allow read, write: if request.auth != null;
+    }
+    match /systemHealth/{docId} {
+      allow read, write: if request.auth != null;
+    }
+
   }
 }

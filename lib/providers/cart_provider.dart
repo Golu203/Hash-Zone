@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/product.dart';
+import '../services/firestore_cart_service.dart';
 import '../widgets/cart_notification.dart';
 
 class CartItem {
@@ -76,6 +77,8 @@ class CartItem {
 
 class CartProvider extends ChangeNotifier {
   List<CartItem> _items = [];
+  String? _uid; // null = guest (local storage only)
+  final FirestoreCartService _firestoreCart = FirestoreCartService();
 
   List<CartItem> get items => _items;
 
@@ -83,34 +86,74 @@ class CartProvider extends ChangeNotifier {
     _loadCart();
   }
 
+  // ── Auth wiring ─────────────────────────────────────────────────────────────
+  /// Called by main.dart listener when user signs in.
+  /// Merges local cart with Firestore cart and starts syncing.
+  Future<void> attachUser(String uid) async {
+    _uid = uid;
+    // Load Firestore cart
+    final firestoreItems = await _firestoreCart.loadCart(uid);
+    
+    if (firestoreItems.isNotEmpty) {
+      // Merge: Firestore wins for existing items; local-only items are added
+      final merged = List<CartItem>.from(firestoreItems);
+      for (final localItem in _items) {
+        final exists = merged.any(
+          (fi) => fi.productId == localItem.productId && fi.size == localItem.size,
+        );
+        if (!exists) merged.add(localItem);
+      }
+      _items = merged;
+    } else if (_items.isNotEmpty) {
+      // No Firestore cart yet — push local items to Firestore
+      await _firestoreCart.syncCart(uid, _items);
+    }
+
+    notifyListeners();
+  }
+
+  /// Called when user signs out.
+  void detachUser() {
+    _uid = null;
+    _items = [];
+    notifyListeners();
+    _loadCart(); // reload local prefs for guest session
+  }
+
+  // ── Computed ────────────────────────────────────────────────────────────────
   int get totalQuantity => _items.fold(0, (sum, item) => sum + item.quantity);
+  double get grandTotal =>
+      _items.fold(0.0, (sum, item) => sum + (item.price * item.quantity));
 
-  double get grandTotal => _items.fold(0.0, (sum, item) => sum + (item.price * item.quantity));
-
+  // ── Local persistence ───────────────────────────────────────────────────────
   Future<void> _loadCart() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final cartData = prefs.getString('hashzone_cart');
       if (cartData != null) {
         final List decoded = jsonDecode(cartData);
-        _items = decoded.map((e) => CartItem.fromMap(Map<String, dynamic>.from(e))).toList();
+        _items =
+            decoded.map((e) => CartItem.fromMap(Map<String, dynamic>.from(e))).toList();
         notifyListeners();
       }
-    } catch (e) {
-      print('Error loading cart: $e');
-    }
+    } catch (_) {}
   }
 
   Future<void> _saveCart() async {
+    // Local prefs (guest sessions / offline fallback)
     try {
       final prefs = await SharedPreferences.getInstance();
       final cartData = jsonEncode(_items.map((e) => e.toMap()).toList());
       await prefs.setString('hashzone_cart', cartData);
-    } catch (e) {
-      print('Error saving cart: $e');
+    } catch (_) {}
+
+    // Firestore sync (authenticated users)
+    if (_uid != null) {
+      _firestoreCart.syncCart(_uid!, _items).catchError((_) {});
     }
   }
 
+  // ── Public API (unchanged signatures) ──────────────────────────────────────
   int getProductTotalQuantity(String productId) {
     return _items
         .where((item) => item.productId == productId)
@@ -121,7 +164,8 @@ class CartProvider extends ChangeNotifier {
     final productItems = _items.where((item) => item.productId == product.id).toList();
     if (productItems.isEmpty) {
       if (newTotalQty > 0) {
-        final size = product.availableSizes.isNotEmpty ? product.availableSizes.first : 'Free Size';
+        final size =
+            product.availableSizes.isNotEmpty ? product.availableSizes.first : 'Free Size';
         final price = product.getActivePriceForSize(size);
         addItem(product, size, price, newTotalQty);
       }
@@ -212,7 +256,8 @@ class CartProvider extends ChangeNotifier {
     );
 
     if (existingNewSizeIndex != -1 && existingNewSizeIndex != oldIndex) {
-      final mergedQty = _items[existingNewSizeIndex].quantity + _items[oldIndex].quantity;
+      final mergedQty =
+          _items[existingNewSizeIndex].quantity + _items[oldIndex].quantity;
       _items[existingNewSizeIndex] = _items[existingNewSizeIndex].copyWith(
         quantity: mergedQty,
         price: newPrice,
@@ -263,7 +308,7 @@ class CartProvider extends ChangeNotifier {
       }
       buffer.writeln('──────────────────');
     }
-    
+
     final grouped = <String, List<CartItem>>{};
     for (var item in _items) {
       grouped.putIfAbsent(item.productId, () => []).add(item);
@@ -273,26 +318,27 @@ class CartProvider extends ChangeNotifier {
     grouped.forEach((productId, itemsList) {
       final firstItem = itemsList.first;
       buffer.writeln('$index. *${firstItem.title}*');
-      
+
       final skuFromMap = productSkus?[productId] ?? '';
       final sku = skuFromMap.isNotEmpty ? skuFromMap : firstItem.sku;
       if (sku.trim().isNotEmpty) {
         buffer.writeln('   • SKU CODE: "${sku.trim()}"');
       }
-      
+
       double productTotal = 0.0;
       for (var item in itemsList) {
         final double lineTotal = item.price * item.quantity;
         productTotal += lineTotal;
-        buffer.writeln('   • Size ${item.size} × ${item.quantity} (₹${item.price.toStringAsFixed(0)} each) = ₹${lineTotal.toStringAsFixed(0)}');
+        buffer.writeln(
+            '   • Size ${item.size} × ${item.quantity} (₹${item.price.toStringAsFixed(0)} each) = ₹${lineTotal.toStringAsFixed(0)}');
       }
-      
+
       buffer.writeln('   *Product Total: ₹${productTotal.toStringAsFixed(0)}*');
       buffer.writeln('   Link: ${firstItem.productUrl}');
       buffer.writeln('──────────────────');
       index++;
     });
-    
+
     buffer.writeln('💰 *Grand Total: ₹${grandTotal.toStringAsFixed(0)}*');
     return buffer.toString();
   }

@@ -707,7 +707,7 @@ class _AdminProductEditScreenState extends ConsumerState<AdminProductEditScreen>
                             if (!isSizeEnabled) ...[
                               const SizedBox(height: 12),
                               Text(
-                                'Sizes are turned OFF for ${dept?.name}. Toggle sizes ON in Taxonomies to enable size selection.',
+                                'Sizes are turned OFF for ${dept.name}. Toggle sizes ON in Taxonomies to enable size selection.',
                                 style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.red[900]),
                               ),
                             ] else ...[

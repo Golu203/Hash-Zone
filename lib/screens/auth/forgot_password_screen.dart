@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../services/customer_auth_service.dart';
+import '../../widgets/smart_back_button.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   final String? redirectTo;
@@ -79,6 +80,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          const Align(
+            alignment: Alignment.centerLeft,
+            child: HZSmartBackButton(fallbackRoute: '/login'),
+          ),
+          const SizedBox(height: 12),
           Text(
             'HASH ZONE',
             style: GoogleFonts.cormorantGaramond(fontSize: 30, fontWeight: FontWeight.bold, letterSpacing: 4, color: Colors.black),

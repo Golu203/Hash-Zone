@@ -204,15 +204,15 @@ ${_messageController.text.trim()}
             children: [
               Text(label, style: GoogleFonts.inter(fontSize: 11, color: const Color(0xFF666666))),
               const SizedBox(height: 2),
-              ...numbers.map((num) => InkWell(
+              ...numbers.map((phoneNum) => InkWell(
                     onTap: () {
-                      final cleanNumber = num.replaceAll(RegExp(r'[^\d+]'), '');
+                      final cleanNumber = phoneNum.replaceAll(RegExp(r'[^\d+]'), '');
                       _launchUrl('tel:$cleanNumber');
                     },
                     child: Padding(
                       padding: const EdgeInsets.only(bottom: 4.0),
                       child: Text(
-                        num,
+                        phoneNum,
                         style: GoogleFonts.inter(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,

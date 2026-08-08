@@ -1,0 +1,44 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // ── Product Images ─────────────────────────────────────────────────────
+    // Publicly readable. Only authenticated users (admin) can write.
+    match /products/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // ── Payment Screenshots (Cloudinary) ──────────────────────────────────
+    // Uploaded via Cloudinary, but if Firebase Storage is used as fallback:
+    match /payments/{allPaths=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+
+    // ── Order Receipts (System-generated HTML receipts) ───────────────────
+    match /receipts/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // ── Tax Invoices (Admin-uploaded PDF invoices) ────────────────────────
+    match /invoices/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // ── Hero Banners & Marketing Assets ───────────────────────────────────
+    match /banners/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // ── Hashzone General Assets ───────────────────────────────────────────
+    match /hashzone/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+  }
+}

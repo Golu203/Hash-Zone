@@ -14,7 +14,7 @@ class AdminProvider extends ChangeNotifier {
   final CloudinaryService _cloudinaryService = CloudinaryService();
 
   bool _isUploading = false;
-  double _uploadProgress = 0.0;
+  final double _uploadProgress = 0.0;
   String _uploadStatusText = '';
 
   bool get isUploading => _isUploading;
@@ -68,7 +68,7 @@ class AdminProvider extends ChangeNotifier {
           }
         }
       } catch (e) {
-        print('Error cleaning up deleted images during product save: $e');
+        debugPrint('Error cleaning up deleted images during product save: $e');
       }
     }
     await _firestoreService.saveProduct(product);
@@ -86,7 +86,7 @@ class AdminProvider extends ChangeNotifier {
         }
       }
     } catch (e) {
-      print('Error cleaning up images during product deletion: $e');
+      debugPrint('Error cleaning up images during product deletion: $e');
     }
     await _firestoreService.deleteProduct(id);
     notifyListeners();
@@ -140,7 +140,7 @@ class AdminProvider extends ChangeNotifier {
           }
         }
       } catch (e) {
-        print('Error cleaning up banner image on save: $e');
+        debugPrint('Error cleaning up banner image on save: $e');
       }
     }
     await _firestoreService.saveHeroBanner(banner);
@@ -155,7 +155,7 @@ class AdminProvider extends ChangeNotifier {
         await _cloudinaryService.deleteImage(oldPublicId);
       }
     } catch (e) {
-      print('Error cleaning up banner image on delete: $e');
+      debugPrint('Error cleaning up banner image on delete: $e');
     }
     await _firestoreService.deleteHeroBanner(id);
   }

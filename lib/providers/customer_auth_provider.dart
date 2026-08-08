@@ -8,6 +8,9 @@ import 'package:flutter/material.dart';
 import '../models/customer_profile.dart';
 import '../services/customer_auth_service.dart';
 
+// Broadcasts uid (string) when signed in, null when signed out.
+// Used by main.dart to wire CartProvider and AddressProvider.
+
 enum CustomerAuthStatus { loading, authenticated, unauthenticated }
 
 class CustomerAuthProvider extends ChangeNotifier {
@@ -31,6 +34,11 @@ class CustomerAuthProvider extends ChangeNotifier {
   bool get isAuthenticated => _status == CustomerAuthStatus.authenticated;
   bool get needsOnboarding =>
       isAuthenticated && _profile != null && !_profile!.onboardingComplete;
+
+  /// Stream of uid (non-null) when signed in, null when signed out.
+  /// Used by main.dart to wire CartProvider + AddressProvider.
+  Stream<String?> get authStateStream => _service.authStateChanges.map((u) => u?.uid);
+
 
   // ── Init ────────────────────────────────────────────────────────────────────
   void _init() {

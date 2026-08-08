@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../models/product.dart';
 import '../providers/catalog_provider.dart';
@@ -13,33 +12,6 @@ import 'context_menu_wrapper.dart';
 import 'size_price_table.dart';
 import 'quantity_stepper.dart';
 import 'manage_cart_dialog.dart';
-
-/// Canonical size order: letter sizes first (XS→3XL), then Free Size, then numeric ascending.
-const _kSizeOrder = [
-  'XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL', 'Free Size',
-];
-
-List<String> _sortedSizes(List<String> sizes) {
-  final copy = List<String>.from(sizes);
-  copy.sort((a, b) {
-    final ai = _kSizeOrder.indexOf(a);
-    final bi = _kSizeOrder.indexOf(b);
-    final aIsLetter = ai != -1;
-    final bIsLetter = bi != -1;
-
-    if (aIsLetter && bIsLetter) return ai.compareTo(bi);   // both letter sizes
-    if (aIsLetter) return -1;  // letter sizes come first
-    if (bIsLetter) return 1;
-
-    // Both numeric — compare as integers
-    final an = int.tryParse(a);
-    final bn = int.tryParse(b);
-    if (an != null && bn != null) return an.compareTo(bn);
-
-    return a.compareTo(b); // fallback lexicographic
-  });
-  return copy;
-}
 
 class ProductCard extends StatefulWidget {
   final Product product;
@@ -58,8 +30,6 @@ class _ProductCardState extends State<ProductCard> {
     final catalog = Provider.of<CatalogProvider>(context, listen: false);
     final categoryName =
         catalog.getCategoryById(widget.product.categoryId)?.name ?? 'Premium';
-    final currencyFormatter =
-        NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0);
     final coverImg = widget.product.coverImage;
 
     return HZContextMenuWrapper(
@@ -237,7 +207,7 @@ class _ProductCardState extends State<ProductCard> {
                               // Spacer pushes button to bottom — stays INSIDE card
                               const Spacer(),
 
-                              // ── WhatsApp Inquiry Button ─────────────────────
+                              // ── Buy Now Button ────────────────────────────
                               _CompactInquiryButton(
                                 product: widget.product,
                                 isSmall: isSmall,
@@ -316,34 +286,16 @@ class _CompactInquiryButton extends StatelessWidget {
       );
     }
 
-    // ── Cart ENABLED: show WhatsApp inquiry + Add to cart buttons ─────────────
     return Row(
       children: [
-        // WhatsApp inquiry — two-step flow: Popup 1 (size/qty) → Popup 2 (customer details)
         Expanded(
           child: ElevatedButton(
-            onPressed: () => HZProductActionDialog.show(context, product: product, isWhatsApp: true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF25D366),
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(6),
-              ),
-              elevation: 0,
+            onPressed: () => HZProductActionDialog.show(
+              context,
+              product: product,
+              isWhatsApp: false,
+              isBuyNow: true,
             ),
-            child: Icon(
-              Icons.chat_outlined,
-              color: Colors.white,
-              size: isSmall ? 13 : 16,
-            ),
-          ),
-        ),
-        const SizedBox(width: 8),
-        // Add to Cart — still opens the full size/quantity action dialog
-        Expanded(
-          child: ElevatedButton(
-            onPressed: () => HZProductActionDialog.show(context, product: product, isWhatsApp: false),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.black,
               foregroundColor: Colors.white,
@@ -353,10 +305,39 @@ class _CompactInquiryButton extends StatelessWidget {
               ),
               elevation: 0,
             ),
-            child: Icon(
-              Icons.add_shopping_cart_outlined,
-              color: Colors.white,
-              size: isSmall ? 13 : 16,
+            child: Text(
+              'BUY NOW',
+              style: GoogleFonts.inter(
+                fontWeight: FontWeight.bold,
+                fontSize: isSmall ? 9 : 11,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 6),
+        Expanded(
+          child: OutlinedButton(
+            onPressed: () => HZProductActionDialog.show(
+              context,
+              product: product,
+              isWhatsApp: false,
+              isBuyNow: false,
+            ),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Colors.black,
+              side: const BorderSide(color: Colors.black, width: 1.0),
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(6),
+              ),
+              elevation: 0,
+            ),
+            child: Text(
+              'ADD TO CART',
+              style: GoogleFonts.inter(
+                fontWeight: FontWeight.bold,
+                fontSize: isSmall ? 8 : 10,
+              ),
             ),
           ),
         ),

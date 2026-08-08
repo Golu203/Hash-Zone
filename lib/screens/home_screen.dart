@@ -14,6 +14,7 @@ import '../widgets/skeleton_loaders.dart';
 import '../utils/seo_helper.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../providers/business_provider.dart';
+import '../services/navigation_memory_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -30,6 +31,10 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _scrollController = ScrollController();
+    NavigationMemoryService().attachScrollRestoration(
+      controller: _scrollController,
+      route: '/',
+    );
   }
 
   @override

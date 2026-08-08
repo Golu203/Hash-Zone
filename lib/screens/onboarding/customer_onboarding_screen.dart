@@ -4,6 +4,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../models/customer_profile.dart';
 import '../../providers/customer_auth_provider.dart';
+import '../../services/address_service.dart';
+import '../../widgets/unified_address_form.dart';
 
 class CustomerOnboardingScreen extends StatefulWidget {
   final String? redirectTo;
@@ -123,22 +125,46 @@ class _CustomerOnboardingScreenState extends State<CustomerOnboardingScreen>
   }
 
   Future<void> _saveAndFinish() async {
+    final defaultAddr = CustomerAddress2(
+      id: '',
+      name: _nameCtrl.text.trim(),
+      phone: _phoneCtrl.text.trim(),
+      companyName: _companyCtrl.text.trim(),
+      doorNumber: _doorCtrl.text.trim(),
+      road: _roadCtrl.text.trim(),
+      area: _areaCtrl.text.trim(),
+      city: _cityCtrl.text.trim(),
+      landmark: _landmarkCtrl.text.trim(),
+    );
+    await _saveAndFinishWithAddress(defaultAddr);
+  }
+
+  Future<void> _saveAndFinishWithAddress(CustomerAddress2 fullAddress) async {
     setState(() => _isSaving = true);
     try {
       final auth = context.read<CustomerAuthProvider>();
+      final uid = auth.firebaseUser?.uid;
+
       await auth.completeOnboarding(
-        displayName: _nameCtrl.text.trim(),
-        companyName: _companyCtrl.text.trim(),
-        phoneNumber: _phoneCtrl.text.trim(),
+        displayName: _nameCtrl.text.trim().isNotEmpty ? _nameCtrl.text.trim() : fullAddress.name,
+        companyName: _companyCtrl.text.trim().isNotEmpty ? _companyCtrl.text.trim() : fullAddress.companyName,
+        phoneNumber: _phoneCtrl.text.trim().isNotEmpty ? _phoneCtrl.text.trim() : fullAddress.phone,
         whatsAppNumber: _waCtrl.text.trim(),
         address: CustomerAddress(
-          doorNumber: _doorCtrl.text.trim(),
-          road: _roadCtrl.text.trim(),
-          area: _areaCtrl.text.trim(),
-          city: _cityCtrl.text.trim(),
-          landmark: _landmarkCtrl.text.trim(),
+          doorNumber: fullAddress.doorNumber,
+          road: fullAddress.road,
+          area: fullAddress.area,
+          city: fullAddress.city,
+          landmark: fullAddress.landmark,
         ),
       );
+
+      if (uid != null) {
+        final addrSvc = AddressService();
+        final defaultAddress = fullAddress.copyWith(isDefault: true);
+        await addrSvc.addAddress(uid, defaultAddress);
+      }
+
       if (!mounted) return;
       // Move to step 4 (completion)
       setState(() => _currentStep = 3);
@@ -345,39 +371,26 @@ class _CustomerOnboardingScreenState extends State<CustomerOnboardingScreen>
   Widget _buildStep3(bool isMobile) {
     return _stepWrapper(
       isMobile: isMobile,
-      title: 'Your address',
-      subtitle: 'Required for shipping. You can update this later.',
-      form: Form(
-        key: _step3Key,
-        child: Column(
-          children: [
-            _field(_doorCtrl, 'Door / Flat Number *', Icons.home_outlined, validator: (v) {
-              if (v == null || v.trim().isEmpty) return 'Door number is required';
-              return null;
-            }),
-            const SizedBox(height: 14),
-            _field(_roadCtrl, 'Road / Block / Street *', Icons.map_outlined, validator: (v) {
-              if (v == null || v.trim().isEmpty) return 'Road / Block is required';
-              return null;
-            }),
-            const SizedBox(height: 14),
-            _field(_areaCtrl, 'Area / Colony *', Icons.location_city_outlined, validator: (v) {
-              if (v == null || v.trim().isEmpty) return 'Area is required';
-              return null;
-            }),
-            const SizedBox(height: 14),
-            _field(_cityCtrl, 'City *', Icons.location_on_outlined, validator: (v) {
-              if (v == null || v.trim().isEmpty) return 'City is required';
-              return null;
-            }),
-            const SizedBox(height: 14),
-            _field(_landmarkCtrl, 'Landmark (Optional)', Icons.place_outlined),
-          ],
-        ),
+      title: 'Primary Delivery Address',
+      subtitle: 'Where should your wholesale orders be shipped?',
+      form: UnifiedAddressForm(
+        defaultFullName: _nameCtrl.text.trim(),
+        defaultPhone: _phoneCtrl.text.trim(),
+        defaultCompany: _companyCtrl.text.trim(),
+        submitButtonText: 'COMPLETE SETUP',
+        isSaving: _isSaving,
+        onSave: (address) async {
+          _doorCtrl.text = address.doorNumber;
+          _roadCtrl.text = address.road;
+          _areaCtrl.text = address.area;
+          _cityCtrl.text = address.city;
+          _landmarkCtrl.text = address.landmark;
+          await _saveAndFinishWithAddress(address);
+        },
       ),
-      onNext: _nextStep,
+      onNext: () {},
       onBack: _prevStep,
-      nextLabel: _isSaving ? null : 'COMPLETE SETUP',
+      nextLabel: null,
       isLoading: _isSaving,
     );
   }

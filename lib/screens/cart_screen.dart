@@ -2,47 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../providers/cart_provider.dart';
 import '../providers/catalog_provider.dart';
 import '../providers/business_provider.dart';
 import '../widgets/navbar.dart';
 import '../widgets/footer.dart';
 import '../widgets/quantity_stepper.dart';
-import '../widgets/customer_info_dialog.dart';
+import '../widgets/smart_back_button.dart';
 
 class CartScreen extends StatelessWidget {
   const CartScreen({super.key});
-
-  Future<void> _checkoutWhatsApp(BuildContext context, CartProvider cart, BusinessProvider business) async {
-    final catalog = Provider.of<CatalogProvider>(context, listen: false);
-    final productSkus = {
-      for (var p in catalog.products) p.id: p.sku
-    };
-
-    final result = await HZCustomerInfoDialog.show(context);
-    if (result == null) return;
-
-    final message = cart.generateWhatsAppMessage(
-      customerName: result['name'],
-      customerPhone: result['phone'],
-      customerNote: result['note'],
-      productSkus: productSkus,
-    );
-    final waNum = business.settings.whatsAppNumber.replaceAll(RegExp(r'[^\d+]'), '');
-    final cleanWa = waNum.startsWith('+') ? waNum.substring(1) : waNum;
-
-    final uri = Uri.parse('https://wa.me/$cleanWa?text=${Uri.encodeComponent(message)}');
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri);
-    } else {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not launch WhatsApp'), backgroundColor: Colors.red),
-        );
-      }
-    }
-  }
 
   void _showClearCartConfirmation(BuildContext context, CartProvider cart) {
     showDialog(
@@ -132,6 +101,8 @@ class CartScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  const HZSmartBackButton(fallbackRoute: '/products'),
+                  const SizedBox(height: 12),
                   Text(
                     'YOUR SHOPPING CART',
                     style: GoogleFonts.cormorantGaramond(
@@ -143,7 +114,7 @@ class CartScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'Review your selected items and inquiry options',
+                    'Review your selected items before checkout',
                     style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF666666)),
                   ),
                   const Divider(color: Colors.black, height: 40, thickness: 1.5),
@@ -401,7 +372,7 @@ class CartScreen extends StatelessWidget {
                           ),
                         ],
                       );
-                    }).toList(),
+                    }),
                   ],
                 ),
                 
@@ -554,7 +525,7 @@ class CartScreen extends StatelessWidget {
                     ),
                   ],
                 );
-              }).toList(),
+              }),
             ],
           ),
           
@@ -606,11 +577,11 @@ class CartScreen extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.black, width: 2.0),
-        boxShadow: [
+        boxShadow: const [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Color(0x0A000000),
             blurRadius: 10,
-            offset: const Offset(0, 4),
+            offset: Offset(0, 4),
           )
         ]
       ),
@@ -618,7 +589,7 @@ class CartScreen extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'INQUIRY SUMMARY',
+            'ORDER SUMMARY',
             style: GoogleFonts.cormorantGaramond(fontSize: 20, fontWeight: FontWeight.bold, letterSpacing: 1.5, color: Colors.black),
           ),
           const SizedBox(height: 16),
@@ -653,17 +624,17 @@ class CartScreen extends StatelessWidget {
             width: double.infinity,
             height: 52,
             child: ElevatedButton.icon(
-              onPressed: hasInvalidQuantity ? null : () => _checkoutWhatsApp(context, cart, business),
-              icon: const Icon(Icons.chat_bubble_outline_rounded, color: Colors.white, size: 18),
+              onPressed: hasInvalidQuantity ? null : () => context.go('/checkout'),
+              icon: const Icon(Icons.shopping_bag_outlined, color: Colors.white, size: 18),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF25D366),
+                backgroundColor: Colors.black,
                 foregroundColor: Colors.white,
                 disabledBackgroundColor: Colors.grey.shade300,
                 disabledForegroundColor: Colors.grey.shade500,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               ),
               label: Text(
-                'ORDER ON WHATSAPP',
+                'PROCEED TO CHECKOUT',
                 style: GoogleFonts.inter(fontWeight: FontWeight.bold, letterSpacing: 1.0, fontSize: 13),
               ),
             ),

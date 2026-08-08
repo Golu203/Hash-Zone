@@ -61,6 +61,9 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
         case 'user-disabled':
           msg = 'This admin account has been disabled.';
           break;
+        case 'too-many-requests':
+          msg = 'Firebase has temporarily blocked requests from this device due to multiple failed login attempts. Please wait a few minutes or clear your browser site data/cookies.';
+          break;
         default:
           msg = e.message ?? 'Authentication failed. Please check Firebase Auth settings.';
           break;

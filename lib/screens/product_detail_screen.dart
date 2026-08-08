@@ -14,9 +14,9 @@ import '../widgets/footer.dart';
 import '../widgets/image_gallery.dart';
 import '../widgets/navbar.dart';
 import '../widgets/product_card.dart';
-import '../widgets/whatsapp_button.dart';
 
 import '../widgets/product_action_dialog.dart';
+import '../widgets/smart_back_button.dart';
 import '../widgets/size_price_table.dart';
 import '../widgets/quantity_stepper.dart';
 import '../providers/cart_provider.dart';
@@ -31,7 +31,6 @@ class ProductDetailScreen extends StatefulWidget {
 }
 
 class _ProductDetailScreenState extends State<ProductDetailScreen> {
-  String? _selectedSize;
 
   Future<void> _makePhoneCall(BuildContext context, String phoneNumber) async {
     final cleanNumber = phoneNumber.replaceAll(RegExp(r'[^\d+]'), '');
@@ -180,14 +179,15 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     };
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      final p = product!;
       SeoHelper.updateMetadata(
-        title: '${product!.title} - Wholesale Garment Manufacturer | HASH ZONE',
-        description: product!.description.isNotEmpty && product!.description.length > 20
-            ? (product!.description.length > 155 ? '${product!.description.substring(0, 152)}...' : product!.description)
-            : 'Bulk purchase of ${product!.title}. Premium quality, custom design configurations by leading clothing factory in Tiruppur, Tamil Nadu, India.',
-        keywords: '${product!.title}, ${product!.sku}, Custom Clothing Manufacturer, OEM Clothing Manufacturer, Wholesale Clothing Supplier, Tiruppur Garment Factory, Tiruppur, Tamil Nadu, India',
-        path: '/product/${product!.slug}',
-        imageUrl: product!.coverImageUrl,
+        title: '${p.title} - Wholesale Garment Manufacturer | HASH ZONE',
+        description: p.description.isNotEmpty && p.description.length > 20
+            ? (p.description.length > 155 ? '${p.description.substring(0, 152)}...' : p.description)
+            : 'Bulk purchase of ${p.title}. Premium quality, custom design configurations by leading clothing factory in Tiruppur, Tamil Nadu, India.',
+        keywords: '${p.title}, ${p.sku}, Custom Clothing Manufacturer, OEM Clothing Manufacturer, Wholesale Clothing Supplier, Tiruppur Garment Factory, Tiruppur, Tamil Nadu, India',
+        path: '/product/${p.slug}',
+        imageUrl: p.coverImageUrl,
         jsonLdSchema: json.encode(schemaJson),
       );
     });
@@ -210,6 +210,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 scrollDirection: Axis.horizontal,
                 child: Row(
                   children: [
+                    const HZSmartBackButton(fallbackRoute: '/products', color: Colors.white, label: 'BACK'),
+                    const SizedBox(width: 8),
+                    const Text(' | ', style: TextStyle(color: Colors.white24, fontSize: 11)),
+                    const SizedBox(width: 8),
                     InkWell(
                       onTap: () => context.go('/'),
                       child: Text('HOME', style: GoogleFonts.inter(fontSize: 11, color: Colors.white54)),
@@ -471,6 +475,39 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               final cart = Provider.of<CartProvider>(context);
               final cartQty = cart.getProductTotalQuantity(product.id);
 
+              if (cartQty > 0) {
+                return Row(
+                  children: [
+                    Expanded(
+                      child: HZQuantityStepper(
+                            product: product,
+                            initialValue: cartQty,
+                            height: 48.0,
+                            isSmall: false,
+                          ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () => context.go('/checkout'),
+                        icon: const Icon(Icons.shopping_bag_outlined, color: Colors.white, size: 18),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.black,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          elevation: 0,
+                        ),
+                        label: Text(
+                          'CHECKOUT',
+                          style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13, letterSpacing: 0.5),
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              }
+
               return Row(
                 children: [
                   Expanded(
@@ -478,50 +515,44 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                       onPressed: () => HZProductActionDialog.show(
                         context,
                         product: product,
-                        isWhatsApp: true,
+                        isWhatsApp: false,
+                        isBuyNow: true,
                       ),
-                      icon: const Icon(Icons.chat_outlined, color: Colors.white, size: 18),
+                      icon: const Icon(Icons.shopping_bag_outlined, color: Colors.white, size: 18),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF25D366),
+                        backgroundColor: Colors.black,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                         elevation: 0,
                       ),
                       label: Text(
-                        'INQUIRE',
+                        'BUY NOW',
                         style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13, letterSpacing: 0.5),
                       ),
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: cartQty > 0
-                        ? HZQuantityStepper(
-                            product: product,
-                            initialValue: cartQty,
-                            height: 48.0,
-                            isSmall: false,
-                          )
-                        : ElevatedButton.icon(
-                            onPressed: () => HZProductActionDialog.show(
-                              context,
-                              product: product,
-                              isWhatsApp: false,
-                            ),
-                            icon: const Icon(Icons.add_shopping_cart_outlined, color: Colors.white, size: 18),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.black,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                              elevation: 0,
-                            ),
-                            label: Text(
-                              'ADD TO CART',
-                              style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13, letterSpacing: 0.5),
-                            ),
-                          ),
+                    child: OutlinedButton.icon(
+                      onPressed: () => HZProductActionDialog.show(
+                        context,
+                        product: product,
+                        isWhatsApp: false,
+                        isBuyNow: false,
+                      ),
+                      icon: const Icon(Icons.add_shopping_cart, color: Colors.black, size: 18),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.black,
+                        side: const BorderSide(color: Colors.black, width: 1.5),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      label: Text(
+                        'ADD TO CART',
+                        style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13, letterSpacing: 0.5),
+                      ),
+                    ),
                   ),
                 ],
               );

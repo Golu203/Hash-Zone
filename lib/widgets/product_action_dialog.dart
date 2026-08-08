@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -7,27 +8,36 @@ import '../models/product.dart';
 import '../providers/cart_provider.dart';
 import '../providers/business_provider.dart';
 import '../providers/catalog_provider.dart';
+import '../providers/customer_auth_provider.dart';
 import 'quantity_stepper.dart';
 import 'customer_info_dialog.dart';
 
 class HZProductActionDialog extends StatefulWidget {
   final Product product;
   final bool isWhatsApp;
+  final bool isBuyNow;
   final BuildContext parentContext;
 
   const HZProductActionDialog({
     super.key,
     required this.product,
     required this.isWhatsApp,
+    this.isBuyNow = false,
     required this.parentContext,
   });
 
-  static Future<void> show(BuildContext context, {required Product product, required bool isWhatsApp}) {
+  static Future<void> show(
+    BuildContext context, {
+    required Product product,
+    required bool isWhatsApp,
+    bool isBuyNow = false,
+  }) {
     return showDialog(
       context: context,
       builder: (dialogContext) => HZProductActionDialog(
         product: product,
         isWhatsApp: isWhatsApp,
+        isBuyNow: isBuyNow,
         parentContext: context,
       ),
     );
@@ -111,8 +121,23 @@ Please confirm availability and ordering details. Thank you!
 
   void _handleAddToCartSubmit(BuildContext context, double unitPrice) {
     final cart = Provider.of<CartProvider>(context, listen: false);
+    final auth = Provider.of<CustomerAuthProvider>(context, listen: false);
     cart.addItem(widget.product, _selectedSize, unitPrice, _quantity);
     Navigator.pop(context);
+
+    if (widget.isBuyNow) {
+      if (!auth.isAuthenticated) {
+        context.go('/login?redirect=${Uri.encodeComponent('/checkout')}');
+      } else {
+        context.go('/checkout');
+      }
+    } else {
+      if (!auth.isAuthenticated) {
+        context.go('/login?redirect=${Uri.encodeComponent('/cart')}');
+      } else {
+        context.go('/cart');
+      }
+    }
   }
 
   @override
@@ -144,7 +169,7 @@ Please confirm availability and ordering details. Thank you!
               children: [
                 Expanded(
                   child: Text(
-                    widget.isWhatsApp ? 'INQUIRE VIA WHATSAPP' : 'ADD TO CART',
+                    widget.isWhatsApp ? 'INQUIRE VIA WHATSAPP' : 'SELECT SIZE & QUANTITY',
                     style: GoogleFonts.cormorantGaramond(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
@@ -344,7 +369,7 @@ Please confirm availability and ordering details. Thank you!
                       elevation: 0,
                     ),
                     child: Text(
-                      widget.isWhatsApp ? 'CONTINUE TO WHATSAPP' : 'ADD TO CART',
+                      widget.isWhatsApp ? 'CONTINUE TO WHATSAPP' : (widget.isBuyNow ? 'PROCEED TO CHECKOUT' : 'ADD TO CART'),
                       style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13, letterSpacing: 0.5),
                     ),
                   ),

@@ -12,6 +12,14 @@ import '../screens/admin/admin_settings_screen.dart';
 import '../screens/admin/admin_taxonomy_screen.dart';
 import '../screens/admin/admin_user_manual_screen.dart';
 import '../screens/admin/admin_supply_network_screen.dart';
+import '../screens/admin/admin_payment_config_screen.dart';
+import '../screens/admin/admin_payment_verification_screen.dart';
+import '../screens/admin/admin_developer_testing_screen.dart';
+import '../screens/admin/admin_orders_screen.dart';
+import '../screens/admin/admin_backup_recovery_screen.dart';
+import '../screens/customer/customer_orders_screen.dart';
+import '../screens/customer/customer_order_details_screen.dart';
+import '../screens/support_screen.dart';
 import '../screens/contact_screen.dart';
 import '../screens/home_screen.dart';
 import '../screens/product_detail_screen.dart';
@@ -26,6 +34,10 @@ import '../screens/auth/customer_login_screen.dart';
 import '../screens/auth/customer_signup_screen.dart';
 import '../screens/auth/forgot_password_screen.dart';
 import '../screens/onboarding/customer_onboarding_screen.dart';
+import '../screens/checkout/checkout_screen.dart';
+import '../screens/dashboard/customer_dashboard_screen.dart';
+import '../screens/dashboard/profile_edit_screen.dart';
+import '../screens/dashboard/address_management_screen.dart';
 
 final appRouter = GoRouter(
   initialLocation: '/',
@@ -59,7 +71,7 @@ final appRouter = GoRouter(
     if (isAuthRoute) return null;
 
     // Protected customer routes
-    final protectedRoutes = ['/profile', '/orders'];
+    final protectedRoutes = ['/profile', '/orders', '/dashboard', '/addresses', '/checkout'];
     final isProtected = protectedRoutes.any((r) => location.startsWith(r));
 
     if (isProtected && !isCustomerLoading && !customerAuth.isAuthenticated) {
@@ -134,6 +146,14 @@ final appRouter = GoRouter(
       path: '/install',
       builder: (context, state) => const InstallScreen(),
     ),
+    GoRoute(
+      path: '/support',
+      builder: (context, state) => const SupportScreen(),
+    ),
+    GoRoute(
+      path: '/contact',
+      builder: (context, state) => const SupportScreen(),
+    ),
 
     // ── Customer Auth Routes ───────────────────────────────────────────────────
     GoRoute(
@@ -162,6 +182,35 @@ final appRouter = GoRouter(
       builder: (context, state) {
         final redirect = state.uri.queryParameters['redirect'];
         return CustomerOnboardingScreen(redirectTo: redirect);
+      },
+    ),
+
+    // ── Customer Protected Routes (Module 2) ──────────────────────────────────
+    GoRoute(
+      path: '/dashboard',
+      builder: (context, state) => const CustomerDashboardScreen(),
+    ),
+    GoRoute(
+      path: '/profile/edit',
+      builder: (context, state) => const ProfileEditScreen(),
+    ),
+    GoRoute(
+      path: '/addresses',
+      builder: (context, state) => const AddressManagementScreen(),
+    ),
+    GoRoute(
+      path: '/checkout',
+      builder: (context, state) => const CheckoutScreen(),
+    ),
+    GoRoute(
+      path: '/orders',
+      builder: (context, state) => const CustomerOrdersScreen(),
+    ),
+    GoRoute(
+      path: '/orders/:id',
+      builder: (context, state) {
+        final id = state.pathParameters['id'] ?? '';
+        return CustomerOrderDetailsScreen(orderId: id);
       },
     ),
 
@@ -213,6 +262,26 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/admin/supply-network',
       builder: (context, state) => const AdminSupplyNetworkScreen(),
+    ),
+    GoRoute(
+      path: '/admin/payment-config',
+      builder: (context, state) => const AdminPaymentConfigScreen(),
+    ),
+    GoRoute(
+      path: '/admin/payment-verification',
+      builder: (context, state) => const AdminPaymentVerificationScreen(),
+    ),
+    GoRoute(
+      path: '/admin/developer-testing',
+      builder: (context, state) => const AdminDeveloperTestingScreen(),
+    ),
+    GoRoute(
+      path: '/admin/orders',
+      builder: (context, state) => const AdminOrdersScreen(),
+    ),
+    GoRoute(
+      path: '/admin/backup-recovery',
+      builder: (context, state) => const AdminBackupRecoveryScreen(),
     ),
   ],
 );

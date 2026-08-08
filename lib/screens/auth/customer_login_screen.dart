@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../providers/customer_auth_provider.dart';
+import '../../widgets/smart_back_button.dart';
 
 class CustomerLoginScreen extends StatefulWidget {
   /// The route to redirect to after successful login (e.g. '/cart').
@@ -128,7 +129,11 @@ class _CustomerLoginScreenState extends State<CustomerLoginScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // ── Logo / Header ──────────────────────────────────────
+                    const Align(
+                      alignment: Alignment.centerLeft,
+                      child: HZSmartBackButton(fallbackRoute: '/'),
+                    ),
+                    const SizedBox(height: 12),
                     _buildHeader(),
                     const SizedBox(height: 36),
 
@@ -437,48 +442,66 @@ class _GoogleLogo extends StatelessWidget {
 class _GoogleLogoPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    final cx = size.width / 2;
-    final cy = size.height / 2;
-    final r = size.width * 0.44;
+    final double scale = size.width / 24.0;
+    canvas.scale(scale);
 
-    // Draw simplified G using colored arcs
-    final colors = [
-      const Color(0xFF4285F4), // blue  top-right
-      const Color(0xFF34A853), // green bottom-right
-      const Color(0xFFFBBC05), // yellow bottom-left
-      const Color(0xFFEA4335), // red top-left
-    ];
+    final Paint paint = Paint()..style = PaintingStyle.fill;
 
-    for (int i = 0; i < 4; i++) {
-      final paint = Paint()
-        ..color = colors[i]
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = size.width * 0.18;
+    // 1. Blue path
+    paint.color = const Color(0xFF4285F4);
+    final Path bluePath = Path()
+      ..moveTo(22.56, 12.25)
+      ..cubicTo(22.56, 11.47, 22.49, 10.72, 22.36, 10.0)
+      ..lineTo(12.0, 10.0)
+      ..lineTo(12.0, 14.26)
+      ..lineTo(17.92, 14.26)
+      ..cubicTo(17.66, 15.63, 16.88, 16.79, 15.71, 17.57)
+      ..lineTo(15.71, 20.34)
+      ..lineTo(19.28, 20.34)
+      ..cubicTo(21.36, 18.42, 22.56, 15.6, 22.56, 12.25)
+      ..close();
+    canvas.drawPath(bluePath, paint);
 
-      canvas.drawArc(
-        Rect.fromCircle(center: Offset(cx, cy), radius: r),
-        (i * 90 - 90) * (3.14159 / 180),
-        90 * (3.14159 / 180),
-        false,
-        paint,
-      );
-    }
+    // 2. Green path
+    paint.color = const Color(0xFF34A853);
+    final Path greenPath = Path()
+      ..moveTo(12.0, 23.0)
+      ..cubicTo(14.97, 23.0, 17.46, 22.02, 19.28, 20.34)
+      ..lineTo(15.71, 17.57)
+      ..cubicTo(14.73, 18.23, 13.48, 18.63, 12.0, 18.63)
+      ..cubicTo(9.14, 18.63, 6.71, 16.7, 5.84, 14.1)
+      ..lineTo(2.18, 14.1)
+      ..lineTo(2.18, 16.94)
+      ..cubicTo(3.99, 20.53, 7.7, 23.0, 12.0, 23.0)
+      ..close();
+    canvas.drawPath(greenPath, paint);
 
-    // White horizontal bar for "G" cut
-    final barPaint = Paint()..color = Colors.white;
-    canvas.drawRect(
-      Rect.fromLTRB(cx, cy - size.height * 0.12, cx + r + size.width * 0.1, cy + size.height * 0.12),
-      barPaint,
-    );
+    // 3. Yellow path
+    paint.color = const Color(0xFFFBBC05);
+    final Path yellowPath = Path()
+      ..moveTo(5.84, 14.1)
+      ..cubicTo(5.62, 13.44, 5.49, 12.74, 5.49, 12.0)
+      ..cubicTo(5.49, 11.26, 5.62, 10.56, 5.84, 9.9)
+      ..lineTo(2.18, 9.9)
+      ..lineTo(2.18, 7.06)
+      ..cubicTo(1.43, 8.55, 1.0, 10.22, 1.0, 12.0)
+      ..cubicTo(1.0, 13.78, 1.43, 15.45, 2.18, 16.94)
+      ..lineTo(5.84, 14.1)
+      ..close();
+    canvas.drawPath(yellowPath, paint);
 
-    // Blue right bar
-    final bluePaint = Paint()
-      ..color = const Color(0xFF4285F4)
-      ..style = PaintingStyle.fill;
-    canvas.drawRect(
-      Rect.fromLTRB(cx, cy - size.height * 0.12, cx + r * 0.85, cy + size.height * 0.12),
-      bluePaint,
-    );
+    // 4. Red path
+    paint.color = const Color(0xFFEA4335);
+    final Path redPath = Path()
+      ..moveTo(12.0, 5.38)
+      ..cubicTo(13.82, 5.38, 15.48, 6.01, 16.76, 7.02)
+      ..lineTo(19.91, 3.87)
+      ..cubicTo(17.9, 2.01, 15.15, 1.0, 12.0, 1.0)
+      ..cubicTo(7.7, 1.0, 3.99, 3.47, 2.18, 7.06)
+      ..lineTo(5.84, 9.9)
+      ..cubicTo(6.71, 7.3, 9.14, 5.38, 12.0, 5.38)
+      ..close();
+    canvas.drawPath(redPath, paint);
   }
 
   @override

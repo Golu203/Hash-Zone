@@ -1,6 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'cloudinary_image.dart';
-import 'dart:math';
 
 class Product {
   final String id;
@@ -258,7 +257,7 @@ class Product {
       'availableSizes': availableSizes,
       'sizePrices': sizePrices,
       'uniqueProductCode': uniqueProductCode,
-      'createdAt': createdAt != null ? Timestamp.fromDate(createdAt) : FieldValue.serverTimestamp(),
+      'createdAt': Timestamp.fromDate(createdAt),
     };
   }
 }

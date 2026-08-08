@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../providers/business_provider.dart';
 import '../providers/catalog_provider.dart';
 import '../providers/cart_provider.dart';
+import '../providers/customer_auth_provider.dart';
 
 class HZNavBar extends StatefulWidget implements PreferredSizeWidget {
   const HZNavBar({super.key});
@@ -248,12 +249,8 @@ class _HZNavBarState extends State<HZNavBar> {
                         width: 160,
                         height: 38,
                         child: TextField(
-                          onSubmitted: (query) {
-                            if (query.trim().isNotEmpty) {
-                              catalog.setSearchQuery(query.trim());
-                              context.go('/products');
-                            }
-                          },
+                          controller: _searchController,
+                          onSubmitted: (query) => _onSearchSubmitted(context, query),
                           style: GoogleFonts.inter(fontSize: 13, color: Colors.black),
                           decoration: InputDecoration(
                             hintText: 'Search...',
@@ -286,8 +283,30 @@ class _HZNavBarState extends State<HZNavBar> {
                             );
                           },
                         ),
-                        const SizedBox(width: 16),
+                        const SizedBox(width: 8),
                       ],
+
+                      // Customer Account Button (Desktop)
+                      Consumer<CustomerAuthProvider>(
+                        builder: (context, auth, child) {
+                          return IconButton(
+                            icon: Icon(
+                              auth.isAuthenticated ? Icons.person : Icons.person_outline,
+                              color: Colors.black,
+                              size: 24,
+                            ),
+                            tooltip: auth.isAuthenticated ? 'My Account' : 'Sign In',
+                            onPressed: () {
+                              if (auth.isAuthenticated) {
+                                context.go('/dashboard');
+                              } else {
+                                context.go('/login?redirect=${Uri.encodeComponent('/dashboard')}');
+                              }
+                            },
+                          );
+                        },
+                      ),
+                      const SizedBox(width: 12),
 
                       // Admin Portal Shortcut Button (Fixed & Always Visible)
                       ElevatedButton.icon(
@@ -329,6 +348,27 @@ class _HZNavBarState extends State<HZNavBar> {
                         ),
                         const SizedBox(width: 8),
                       ],
+                      // Customer Account Button (Mobile)
+                      Consumer<CustomerAuthProvider>(
+                        builder: (context, auth, child) {
+                          return IconButton(
+                            icon: Icon(
+                              auth.isAuthenticated ? Icons.person : Icons.person_outline,
+                              color: Colors.black,
+                              size: 24,
+                            ),
+                            tooltip: auth.isAuthenticated ? 'My Account' : 'Sign In',
+                            onPressed: () {
+                              if (auth.isAuthenticated) {
+                                context.go('/dashboard');
+                              } else {
+                                context.go('/login?redirect=${Uri.encodeComponent('/dashboard')}');
+                              }
+                            },
+                          );
+                        },
+                      ),
+                      const SizedBox(width: 4),
                       Builder(
                         builder: (context) {
                           return IconButton(
@@ -547,6 +587,17 @@ class HZMobileDrawer extends StatelessWidget {
 
                   const Divider(color: Color(0xFFE5E5E5), height: 32),
                   
+                  Consumer<CustomerAuthProvider>(
+                    builder: (context, auth, _) {
+                      final isAuth = auth.isAuthenticated;
+                      return _drawerItem(
+                        context,
+                        isAuth ? Icons.person_outline : Icons.login_outlined,
+                        isAuth ? 'MY ACCOUNT' : 'SIGN IN / REGISTER',
+                        isAuth ? '/dashboard' : '/login?redirect=${Uri.encodeComponent('/dashboard')}',
+                      );
+                    },
+                  ),
                   _drawerItem(context, Icons.info_outline, 'ABOUT US', '/about'),
                   _drawerItem(context, Icons.contact_support_outlined, 'CONTACT', '/contact'),
                   _drawerItem(context, Icons.admin_panel_settings_outlined, 'ADMIN PORTAL', '/admin'),

@@ -60,6 +60,25 @@
     gtag('config', 'G-MEASUREMENT_ID_HERE');
   </script>
 
+  <!-- Browser-Side OCR Engine (Tesseract.js) -->
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <script>
+    window.performOcrOnImage = function(base64DataUrl, callback) {
+      if (typeof Tesseract === 'undefined') {
+        if (callback) callback('Tesseract library not loaded', '');
+        return;
+      }
+      Tesseract.recognize(base64DataUrl, 'eng')
+        .then(function(result) {
+          var extractedText = (result && result.data && result.data.text) ? result.data.text : '';
+          if (callback) callback(null, extractedText);
+        })
+        .catch(function(err) {
+          if (callback) callback(err ? err.toString() : 'OCR Error', '');
+        });
+    };
+  </script>
+
   <!-- Default LocalBusiness JSON-LD Schema -->
   <script type="application/ld+json">
     {
