@@ -1,19 +1,7 @@
-import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 class AuthService {
-  late final FirebaseAuth _auth;
-
-  AuthService() {
-    FirebaseAuth authInstance;
-    try {
-      final app = Firebase.app('AdminApp');
-      authInstance = FirebaseAuth.instanceFor(app: app);
-    } catch (_) {
-      authInstance = FirebaseAuth.instance;
-    }
-    _auth = authInstance;
-  }
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
   Stream<User?> get authStateChanges => _auth.authStateChanges();
   User? get currentUser => _auth.currentUser;
