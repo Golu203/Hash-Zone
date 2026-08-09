@@ -33,7 +33,7 @@ class CustomerAuthProvider extends ChangeNotifier {
   bool get isLoading => _status == CustomerAuthStatus.loading;
   bool get isAuthenticated => _status == CustomerAuthStatus.authenticated;
   bool get needsOnboarding =>
-      isAuthenticated && _profile != null && !_profile!.onboardingComplete;
+      isAuthenticated && (_profile == null || !_profile!.onboardingComplete);
 
   /// Stream of uid (non-null) when signed in, null when signed out.
   /// Used by main.dart to wire CartProvider + AddressProvider.
@@ -54,7 +54,11 @@ class CustomerAuthProvider extends ChangeNotifier {
       }
 
       // Stream the Firestore profile in real-time
-      _profileSub = _service.streamProfile(user.uid).listen((profile) {
+      _profileSub = _service.streamProfile(user.uid).listen((profile) async {
+        if (profile == null) {
+          await _service.createProfileIfMissing(user);
+          return;
+        }
         _profile = profile;
         _status = CustomerAuthStatus.authenticated;
         notifyListeners();

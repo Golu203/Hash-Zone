@@ -223,6 +223,51 @@
   </div>
 
   <script>
+    // Smoothly fade out and remove the loading splash screen once Flutter starts rendering
+    (function() {
+      var splashHidden = false;
+      function hideSplash() {
+        if (splashHidden) return;
+        splashHidden = true;
+        var splash = document.getElementById('loading-splash');
+        if (splash) {
+          splash.style.transition = 'opacity 0.4s ease';
+          splash.style.opacity = '0';
+          setTimeout(function() {
+            splash.remove();
+          }, 400);
+        }
+        if (observer) observer.disconnect();
+      }
+
+      var observer = new MutationObserver(function(mutations) {
+        for (var i = 0; i < mutations.length; i++) {
+          var addedNodes = mutations[i].addedNodes;
+          for (var j = 0; j < addedNodes.length; j++) {
+            var node = addedNodes[j];
+            if (node.tagName === 'FLT-GLASS-PANE') {
+              hideSplash();
+              return;
+            }
+          }
+        }
+      });
+      
+      observer.observe(document.body, { childList: true });
+
+      // Fallbacks to guarantee removal
+      window.addEventListener('flutter-first-frame', hideSplash);
+      window.addEventListener('load', function() {
+        if (document.querySelector('flt-glass-pane')) {
+          hideSplash();
+        }
+      });
+      // Safety timeout fallback
+      setTimeout(hideSplash, 10000);
+    })();
+  </script>
+
+  <script>
     // Suppress browser default right-click context menu globally (hides Inspect menu)
     document.addEventListener('contextmenu', function (e) {
       e.preventDefault();

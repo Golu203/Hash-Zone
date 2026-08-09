@@ -65,6 +65,7 @@ class _InstallScreenState extends State<InstallScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: const HZNavBar(),
+      endDrawer: MediaQuery.of(context).size.width < 1150 ? const HZMobileDrawer() : null,
       body: SingleChildScrollView(
         child: Column(
           children: [

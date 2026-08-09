@@ -20,6 +20,7 @@ import '../widgets/smart_back_button.dart';
 import '../widgets/size_price_table.dart';
 import '../widgets/quantity_stepper.dart';
 import '../providers/cart_provider.dart';
+import '../providers/customer_auth_provider.dart';
 
 class ProductDetailScreen extends StatefulWidget {
   final String productId;
@@ -56,7 +57,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   Widget build(BuildContext context) {
     final catalog = Provider.of<CatalogProvider>(context);
     final business = Provider.of<BusinessProvider>(context);
-    final isDesktop = MediaQuery.of(context).size.width >= 900;
+    final isDesktop = MediaQuery.of(context).size.width >= 1150;
     final currencyFormatter = NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0);
 
     // ── Show loading while catalog is still fetching from Firestore ──────────
@@ -113,11 +114,26 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       product = null;
     }
 
-    // Canonicalize URL to the product's stable slug (only after catalog is loaded)
-    if (product != null && widget.productId != product.slug) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        context.go('/product/${product!.slug}');
-      });
+    // Canonicalize URL to the product's stable slug (only after catalog is loaded) & trigger actions
+    if (product != null) {
+      final nonNullProduct = product;
+      final uri = GoRouterState.of(context).uri;
+      final action = uri.queryParameters['action'];
+      final hasAction = action == 'buy_now' || action == 'add_to_cart';
+
+      if (widget.productId != nonNullProduct.slug || hasAction) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          context.go('/product/${nonNullProduct.slug}');
+          if (hasAction) {
+            HZProductActionDialog.show(
+              context,
+              product: nonNullProduct,
+              isWhatsApp: false,
+              isBuyNow: action == 'buy_now',
+            );
+          }
+        });
+      }
     }
 
     if (product == null) {
@@ -512,12 +528,21 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 children: [
                   Expanded(
                     child: ElevatedButton.icon(
-                      onPressed: () => HZProductActionDialog.show(
-                        context,
-                        product: product,
-                        isWhatsApp: false,
-                        isBuyNow: true,
-                      ),
+                      onPressed: () {
+                        final auth = Provider.of<CustomerAuthProvider>(context, listen: false);
+                        if (!auth.isAuthenticated) {
+                          final currentUri = GoRouterState.of(context).uri.toString();
+                          final redirectTarget = '$currentUri${currentUri.contains('?') ? '&' : '?'}action=buy_now&productId=${product.id}';
+                          context.go('/login?redirect=${Uri.encodeComponent(redirectTarget)}');
+                        } else {
+                          HZProductActionDialog.show(
+                            context,
+                            product: product,
+                            isWhatsApp: false,
+                            isBuyNow: true,
+                          );
+                        }
+                      },
                       icon: const Icon(Icons.shopping_bag_outlined, color: Colors.white, size: 18),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.black,
@@ -535,12 +560,21 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: OutlinedButton.icon(
-                      onPressed: () => HZProductActionDialog.show(
-                        context,
-                        product: product,
-                        isWhatsApp: false,
-                        isBuyNow: false,
-                      ),
+                      onPressed: () {
+                        final auth = Provider.of<CustomerAuthProvider>(context, listen: false);
+                        if (!auth.isAuthenticated) {
+                          final currentUri = GoRouterState.of(context).uri.toString();
+                          final redirectTarget = '$currentUri${currentUri.contains('?') ? '&' : '?'}action=add_to_cart&productId=${product.id}';
+                          context.go('/login?redirect=${Uri.encodeComponent(redirectTarget)}');
+                        } else {
+                          HZProductActionDialog.show(
+                            context,
+                            product: product,
+                            isWhatsApp: false,
+                            isBuyNow: false,
+                          );
+                        }
+                      },
                       icon: const Icon(Icons.add_shopping_cart, color: Colors.black, size: 18),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: Colors.black,

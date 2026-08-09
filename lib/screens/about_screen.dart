@@ -16,7 +16,7 @@ class AboutScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final screenSize = MediaQuery.of(context).size;
-    final isDesktop = screenSize.width >= 900;
+    final isDesktop = screenSize.width >= 1150;
     final isMobile = screenSize.width < 600;
 
     WidgetsBinding.instance.addPostFrameCallback((_) {

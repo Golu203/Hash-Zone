@@ -3,11 +3,9 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../models/order_model.dart';
 import '../../providers/customer_auth_provider.dart';
 import '../../services/order_service.dart';
-import '../../services/receipt_generator_service.dart';
 import '../../widgets/navbar.dart';
 import '../../widgets/footer.dart';
 import '../../widgets/smart_back_button.dart';
@@ -19,39 +17,19 @@ class CustomerOrdersScreen extends StatefulWidget {
   State<CustomerOrdersScreen> createState() => _CustomerOrdersScreenState();
 }
 
-class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> with SingleTickerProviderStateMixin {
-  late TabController _tabController;
+class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
   final _service = OrderService();
-
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: 2, vsync: this);
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _launchUrl(String url) async {
-    if (url.isEmpty) return;
-    final uri = Uri.parse(url);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<CustomerAuthProvider>();
     final customerId = auth.firebaseUser?.uid ?? auth.profile?.uid ?? '';
-    final isDesktop = MediaQuery.of(context).size.width >= 900;
+    final isDesktop = MediaQuery.of(context).size.width >= 1150;
 
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: const HZNavBar(),
+      endDrawer: !isDesktop ? const HZMobileDrawer() : null,
       body: SingleChildScrollView(
         child: Column(
           children: [
@@ -79,6 +57,31 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> with Single
                   child: StreamBuilder<List<CustomerOrder>>(
                     stream: _service.streamCustomerOrders(customerId),
                     builder: (context, snap) {
+                      if (snap.hasError) {
+                        return Padding(
+                          padding: const EdgeInsets.all(24.0),
+                          child: Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                                const SizedBox(height: 16),
+                                Text(
+                                  'Error loading orders',
+                                  style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.red),
+                                ),
+                                const SizedBox(height: 8),
+                                SelectableText(
+                                  '${snap.error}',
+                                  style: GoogleFonts.inter(fontSize: 12, color: Colors.black54),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }
+
                       if (snap.connectionState == ConnectionState.waiting) {
                         return const Padding(
                           padding: EdgeInsets.all(48.0),
@@ -87,38 +90,7 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> with Single
                       }
 
                       final allOrders = snap.data ?? [];
-                      final currentOrders = allOrders.where((o) => o.status != 'Dispatched' && o.status != 'Rejected').toList();
-                      final previousOrders = allOrders.where((o) => o.status == 'Dispatched' || o.status == 'Rejected').toList();
-
-                      return Column(
-                        children: [
-                          // Tab Bar
-                          TabBar(
-                            controller: _tabController,
-                            indicatorColor: Colors.black,
-                            labelColor: Colors.black,
-                            unselectedLabelColor: Colors.black45,
-                            labelStyle: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14),
-                            unselectedLabelStyle: GoogleFonts.inter(fontSize: 14),
-                            tabs: [
-                              Tab(text: 'Current Orders (${currentOrders.length})'),
-                              Tab(text: 'Previous Orders (${previousOrders.length})'),
-                            ],
-                          ),
-                          const SizedBox(height: 24),
-
-                          SizedBox(
-                            height: 650,
-                            child: TabBarView(
-                              controller: _tabController,
-                              children: [
-                                _buildOrdersList(currentOrders, 'No active orders found.'),
-                                _buildOrdersList(previousOrders, 'No past orders found.'),
-                              ],
-                            ),
-                          ),
-                        ],
-                      );
+                      return _buildOrdersList(allOrders, 'No orders found.');
                     },
                   ),
                 ),
@@ -153,6 +125,8 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> with Single
     }
 
     return ListView.separated(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
       itemCount: orders.length,
       separatorBuilder: (_, __) => const SizedBox(height: 20),
       itemBuilder: (context, i) => _customerOrderCard(orders[i]),
@@ -161,226 +135,151 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> with Single
 
   Widget _customerOrderCard(CustomerOrder order) {
     final dateStr = DateFormat('dd MMM yyyy').format(order.orderDate);
-
+    final firstItem = order.items.isNotEmpty ? order.items.first : null;
+    final totalItems = order.items.fold<int>(0, (sum, item) => sum + item.quantity);
+    
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color(0xFFEEEEEE)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          )
+        ],
       ),
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header Row
+          // Header: Order ID & Date & Status
           Row(
             children: [
-              Text('Order #${order.id}', style: GoogleFonts.cormorantGaramond(fontSize: 20, fontWeight: FontWeight.bold)),
-              const SizedBox(width: 10),
-              Text(dateStr, style: GoogleFonts.inter(fontSize: 12, color: Colors.black45)),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Order #${order.id}', style: GoogleFonts.cormorantGaramond(fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+                  const SizedBox(height: 4),
+                  Text(dateStr, style: GoogleFonts.inter(fontSize: 11, color: Colors.black45)),
+                ],
+              ),
               const Spacer(),
               _statusBadge(order.status),
             ],
           ),
           const Divider(height: 24, color: Color(0xFFEEEEEE)),
 
-          // Items summary
-          ...order.items.map((item) => Padding(
-                padding: const EdgeInsets.symmetric(vertical: 6),
-                child: Row(
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(6),
-                      child: Image.network(
-                        item.imageUrl,
-                        width: 44,
-                        height: 44,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Container(width: 44, height: 44, color: const Color(0xFFF0F0F0), child: const Icon(Icons.image_not_supported, size: 18, color: Colors.black26)),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(item.title, style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis),
-                          Text('Size: ${item.size}  |  Qty: ${item.quantity}', style: GoogleFonts.inter(fontSize: 11, color: Colors.black45)),
-                        ],
-                      ),
-                    ),
-                    Text('₹${item.lineTotal.toStringAsFixed(0)}', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.bold)),
-                  ],
-                ),
-              )),
-
-          const SizedBox(height: 14),
-
-          // Total Row
+          // Product row info
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Grand Total:', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.bold)),
-              const SizedBox(width: 6),
-              Text('₹${order.grandTotal.toStringAsFixed(0)}', style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.black)),
-            ],
-          ),
-
-          const SizedBox(height: 16),
-
-          // ── 3-STAGE CUSTOMER TIMELINE ──────────────────────────────────────
-          _buildCustomerTimeline(order),
-
-          // ── REJECTION DETAILS (IF REJECTED) ───────────────────────────────
-          if (order.isRejected && order.refundInfo != null) ...[
-            const SizedBox(height: 14),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(color: const Color(0xFFFFF3F3), borderRadius: BorderRadius.circular(10), border: Border.all(color: const Color(0xFFFFCDD2))),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Rejection Details', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: const Color(0xFFD32F2F))),
-                  const SizedBox(height: 4),
-                  Text('Reason: ${order.refundInfo!.reason}', style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFFD32F2F))),
-                  if (order.refundInfo!.refundRequired)
-                    Text('Refund Timeline: ${order.refundInfo!.refundTimeline}', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: const Color(0xFFD32F2F))),
-                ],
-              ),
-            ),
-          ],
-
-          // ── COURIER & TRACKING DETAILS (IF DISPATCHED) ────────────────────
-          if (order.isDispatched && order.dispatchInfo != null) ...[
-            const SizedBox(height: 14),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(color: const Color(0xFFE3F2FD), borderRadius: BorderRadius.circular(10), border: Border.all(color: const Color(0xFF90CAF9))),
-              child: Row(
-                children: [
-                  const Icon(Icons.local_shipping_outlined, color: Color(0xFF1565C0), size: 20),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Courier: ${order.dispatchInfo!.courierCompany}', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: const Color(0xFF1565C0))),
-                        Text('AWB: ${order.dispatchInfo!.awbNumber}', style: GoogleFonts.inter(fontSize: 11, color: const Color(0xFF1565C0))),
-                      ],
+              // Primary image
+              if (firstItem != null)
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.network(
+                    firstItem.imageUrl,
+                    width: 60,
+                    height: 60,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Container(
+                      width: 60,
+                      height: 60,
+                      color: const Color(0xFFF0F0F0),
+                      child: const Icon(Icons.image_not_supported, size: 20, color: Colors.black26),
                     ),
                   ),
-                  if (order.dispatchInfo!.trackingUrl.isNotEmpty)
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1565C0), foregroundColor: Colors.white, elevation: 0),
-                      onPressed: () => _launchUrl(order.dispatchInfo!.trackingUrl),
-                      child: Text('TRACK', style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold)),
-                    ),
-                ],
-              ),
-            ),
-          ],
-
-          // Customer Note
-          if (order.customerNote.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            Text('Note: ${order.customerNote}', style: GoogleFonts.inter(fontSize: 12, color: Colors.black54, fontStyle: FontStyle.italic)),
-          ],
-
-          // ── DOCUMENTS SECTION ──────────────────────────────────────────────
-          const Divider(height: 24, color: Color(0xFFEEEEEE)),
-          Text('DOCUMENTS', style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.black45, letterSpacing: 1.0)),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              // 1. Order Summary Receipt
-              if (order.receiptUrl != null && order.receiptUrl!.isNotEmpty)
-                OutlinedButton.icon(
-                  onPressed: () => _launchUrl(order.receiptUrl!),
-                  icon: const Icon(Icons.picture_as_pdf, size: 14, color: Color(0xFF2E7D32)),
-                  label: Text('Receipt (${order.receiptNumber ?? "HZR"})', style: GoogleFonts.inter(fontSize: 11, color: const Color(0xFF2E7D32), fontWeight: FontWeight.bold)),
                 )
               else
-                OutlinedButton.icon(
-                  onPressed: () async {
-                    final generator = ReceiptGeneratorService();
-                    final url = await generator.generateAndUploadReceipt(order);
-                    _launchUrl(url);
-                  },
-                  icon: const Icon(Icons.download, size: 14),
-                  label: Text('Download Receipt', style: GoogleFonts.inter(fontSize: 11)),
+                Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF0F0F0),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.shopping_bag_outlined, size: 24, color: Colors.black26),
                 ),
-
-              // 2. Final Invoice (If uploaded by Admin)
-              if (order.invoiceUrl != null && order.invoiceUrl!.isNotEmpty)
-                OutlinedButton.icon(
-                  onPressed: () => _launchUrl(order.invoiceUrl!),
-                  icon: const Icon(Icons.description, size: 14, color: Color(0xFF1565C0)),
-                  label: Text('Tax Invoice (PDF)', style: GoogleFonts.inter(fontSize: 11, color: const Color(0xFF1565C0), fontWeight: FontWeight.bold)),
+              const SizedBox(width: 16),
+              // Summary & Details
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      firstItem != null ? firstItem.title : 'Products summary',
+                      style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      totalItems == 1 ? '1 item' : '$totalItems items total',
+                      style: GoogleFonts.inter(fontSize: 12, color: Colors.black54),
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Text(
+                          '₹${order.grandTotal.toStringAsFixed(0)}',
+                          style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(width: 12),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF5F5F5),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            order.paymentInfo.paymentStatus.toUpperCase(),
+                            style: GoogleFonts.inter(fontSize: 9, fontWeight: FontWeight.w600, color: Colors.black54, letterSpacing: 0.5),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-
-              // 3. Payment Screenshot
-              if (order.paymentInfo.cloudinaryScreenshotUrl.isNotEmpty)
-                OutlinedButton.icon(
-                  onPressed: () => _launchUrl(order.paymentInfo.cloudinaryScreenshotUrl),
-                  icon: const Icon(Icons.image, size: 14, color: Colors.black54),
-                  label: Text('Payment Receipt Screenshot', style: GoogleFonts.inter(fontSize: 11)),
-                ),
+              ),
             ],
           ),
-          const SizedBox(height: 12),
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton.icon(
-              onPressed: () => context.go('/orders/${order.id}'),
-              icon: const Icon(Icons.arrow_forward, size: 14),
-              label: Text('View Full Order Details', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold)),
-            ),
+          const Divider(height: 24, color: Color(0xFFEEEEEE)),
+
+          // Footer: Available documents & View button
+          Row(
+            children: [
+              // Document presence labels
+              if (order.receiptUrl != null && order.receiptUrl!.isNotEmpty) ...[
+                const Icon(Icons.check_circle_outline, size: 14, color: Color(0xFF2E7D32)),
+                const SizedBox(width: 4),
+                Text('Receipt Available', style: GoogleFonts.inter(fontSize: 11, color: const Color(0xFF2E7D32), fontWeight: FontWeight.w500)),
+                const SizedBox(width: 16),
+              ],
+              if (order.invoiceUrl != null && order.invoiceUrl!.isNotEmpty) ...[
+                const Icon(Icons.check_circle_outline, size: 14, color: Color(0xFF1565C0)),
+                const SizedBox(width: 4),
+                Text('Invoice Available', style: GoogleFonts.inter(fontSize: 11, color: const Color(0xFF1565C0), fontWeight: FontWeight.w500)),
+              ],
+              const Spacer(),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.black,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                ),
+                onPressed: () => context.go('/orders/${order.id}'),
+                child: Text('VIEW ORDER', style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+              ),
+            ],
           ),
         ],
       ),
     );
-  }
-
-  Widget _buildCustomerTimeline(CustomerOrder order) {
-    final stages = order.timeline;
-    final rcv = stages.firstWhere((t) => t.stageName == 'Order Received', orElse: () => const OrderTimelineStage(stageName: 'Order Received', isCompleted: true));
-    final cnf = stages.firstWhere((t) => t.stageName == 'Order Confirmed', orElse: () => const OrderTimelineStage(stageName: 'Order Confirmed', isCompleted: false));
-    final dsp = stages.firstWhere((t) => t.stageName == 'Dispatched', orElse: () => const OrderTimelineStage(stageName: 'Dispatched', isCompleted: false));
-
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(color: const Color(0xFFFAFAFA), borderRadius: BorderRadius.circular(10)),
-      child: Row(
-        children: [
-          _tStep('Order Received', rcv.isCompleted, rcv.timestamp),
-          _tConn(cnf.isCompleted),
-          _tStep('Order Confirmed', cnf.isCompleted, cnf.timestamp),
-          _tConn(dsp.isCompleted),
-          _tStep('Dispatched', dsp.isCompleted, dsp.timestamp),
-        ],
-      ),
-    );
-  }
-
-  Widget _tStep(String title, bool isDone, DateTime? ts) {
-    final timeStr = ts != null ? DateFormat('dd MMM').format(ts) : '';
-    return Expanded(
-      child: Column(
-        children: [
-          Icon(isDone ? Icons.check_circle : Icons.radio_button_unchecked, color: isDone ? const Color(0xFF2E7D32) : Colors.black26, size: 18),
-          const SizedBox(height: 4),
-          Text(title, style: GoogleFonts.inter(fontSize: 10, fontWeight: isDone ? FontWeight.bold : FontWeight.normal, color: isDone ? Colors.black87 : Colors.black38), textAlign: TextAlign.center),
-          if (timeStr.isNotEmpty) Text(timeStr, style: GoogleFonts.inter(fontSize: 9, color: Colors.black45), textAlign: TextAlign.center),
-        ],
-      ),
-    );
-  }
-
-  Widget _tConn(bool isDone) {
-    return Container(width: 24, height: 2, color: isDone ? const Color(0xFF2E7D32) : const Color(0xFFDDDDDD));
   }
 
   Widget _statusBadge(String status) {

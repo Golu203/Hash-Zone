@@ -12,7 +12,7 @@ class ErrorScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDesktop = MediaQuery.of(context).size.width >= 900;
+    final isDesktop = MediaQuery.of(context).size.width >= 1150;
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       SeoHelper.updateMetadata(

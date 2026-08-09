@@ -32,15 +32,19 @@ class ReceiptGeneratorService {
   String buildReceiptHtml(CustomerOrder order, String receiptNumber, DateTime receiptDate) {
     final dateStr = "${receiptDate.day}/${receiptDate.month}/${receiptDate.year}";
 
-    final itemsRows = order.items.map((item) => '''
+    final itemsRows = order.items.map((item) {
+      final skuCode = item.sku.isNotEmpty ? item.sku : '—';
+      return '''
       <tr>
         <td style="padding: 8px; border-bottom: 1px solid #eee;">${item.title}</td>
+        <td style="padding: 8px; border-bottom: 1px solid #eee;">$skuCode</td>
         <td style="padding: 8px; border-bottom: 1px solid #eee;">${item.size}</td>
         <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: center;">${item.quantity}</td>
         <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: right;">₹${item.unitPrice.toStringAsFixed(0)}</td>
         <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: right; font-weight: bold;">₹${item.lineTotal.toStringAsFixed(0)}</td>
       </tr>
-    ''').join('');
+      ''';
+    }).join('');
 
     return '''
     <!DOCTYPE html>
@@ -95,6 +99,7 @@ class ReceiptGeneratorService {
         <thead>
           <tr>
             <th>Product Name</th>
+            <th>SKU</th>
             <th>Size</th>
             <th style="text-align: center;">Qty</th>
             <th style="text-align: right;">Unit Price</th>

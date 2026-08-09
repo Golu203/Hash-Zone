@@ -27,6 +27,11 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
+  await Firebase.initializeApp(
+    name: 'AdminApp',
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
   final firestoreService = FirestoreService();
   final imageService = ImageService();
   final customerAuthService = CustomerAuthService();

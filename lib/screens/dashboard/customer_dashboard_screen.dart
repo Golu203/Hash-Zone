@@ -17,11 +17,12 @@ class CustomerDashboardScreen extends StatelessWidget {
     final cart = context.watch<CartProvider>();
     final profile = auth.profile;
     final w = MediaQuery.of(context).size.width;
-    final isDesktop = w >= 900;
+    final isDesktop = w >= 1150;
 
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: const HZNavBar(),
+      endDrawer: !isDesktop ? const HZMobileDrawer() : null,
       body: SingleChildScrollView(
         child: Column(
           children: [
@@ -183,7 +184,7 @@ class _DashboardSidebar extends StatelessWidget {
           _navItem(context, Icons.shopping_bag_outlined, 'Cart', () => context.go('/cart'),
               badge: cart.totalQuantity > 0 ? '${cart.totalQuantity}' : null),
           _navItem(context, Icons.receipt_long_outlined, 'Orders', () => context.go('/orders')),
-          _navItem(context, Icons.folder_outlined, 'Documents', null, disabled: true, tag: 'Coming Soon'),
+
           const Divider(height: 1, color: Color(0xFFEEEEEE)),
           _navItem(context, Icons.store_outlined, 'Continue Shopping', () => context.go('/')),
           _navItem(
@@ -414,7 +415,7 @@ class _DashboardTiles extends StatelessWidget {
             () => context.go('/cart'),
             badge: cart.totalQuantity > 0 ? '${cart.totalQuantity}' : null),
         _tile(context, Icons.receipt_long_outlined, 'Orders', () => context.go('/orders')),
-        _tile(context, Icons.folder_outlined, 'Documents', null, disabled: true),
+
         _tile(context, Icons.logout_outlined, 'Sign Out',
             () => _signOut(context, auth),
             isDestructive: true),

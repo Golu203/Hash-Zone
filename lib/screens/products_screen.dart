@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../models/product.dart';
@@ -10,6 +11,7 @@ import '../widgets/skeleton_loaders.dart';
 
 import '../utils/seo_helper.dart';
 
+import '../widgets/product_action_dialog.dart';
 import '../services/navigation_memory_service.dart';
 
 class ProductsScreen extends StatefulWidget {
@@ -40,8 +42,35 @@ class _ProductsScreenState extends State<ProductsScreen> {
   @override
   Widget build(BuildContext context) {
     final catalog = Provider.of<CatalogProvider>(context);
-    final isDesktop = MediaQuery.of(context).size.width >= 900;
+    final isDesktop = MediaQuery.of(context).size.width >= 1150;
     final products = catalog.filteredProducts;
+
+    final uri = GoRouterState.of(context).uri;
+    final action = uri.queryParameters['action'];
+    final productId = uri.queryParameters['productId'];
+    if (!catalog.isLoading && (action == 'buy_now' || action == 'add_to_cart') && productId != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final newParams = Map<String, String>.from(uri.queryParameters)
+          ..remove('action')
+          ..remove('productId');
+        final newUri = uri.replace(queryParameters: newParams);
+        context.go(newUri.toString());
+
+        Product? targetProduct;
+        try {
+          targetProduct = catalog.products.firstWhere((p) => p.id == productId || p.slug == productId);
+        } catch (_) {}
+
+        if (targetProduct != null) {
+          HZProductActionDialog.show(
+            context,
+            product: targetProduct,
+            isWhatsApp: false,
+            isBuyNow: action == 'buy_now',
+          );
+        }
+      });
+    }
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       SeoHelper.updateMetadata(

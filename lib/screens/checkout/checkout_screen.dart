@@ -208,7 +208,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       final subtotal = _subtotal(checkoutItems);
 
       final String orderId = 'HZ-${DateTime.now().millisecondsSinceEpoch.toString().substring(3)}';
-      final String customerId = auth.firebaseUser?.uid ?? auth.profile?.uid ?? 'guest';
+      final String customerId = auth.firebaseUser?.uid ?? auth.profile?.uid ?? '';
       final String customerName = (auth.profile?.displayName.isNotEmpty == true)
           ? auth.profile!.displayName
           : (defaultAddr?.name.isNotEmpty == true ? defaultAddr!.name : 'Customer');
@@ -339,7 +339,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           backgroundColor: const Color(0xFF2E7D32),
           duration: const Duration(seconds: 5),
         ));
-        context.go('/my-orders');
+        context.go('/orders');
       }
 
     } catch (e, stack) {
@@ -378,7 +378,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     final auth = context.watch<CustomerAuthProvider>();
     final addr = context.watch<AddressProvider>();
     final w = MediaQuery.of(context).size.width;
-    final isDesktop = w >= 900;
+    final isDesktop = w >= 1150;
     final isMobile = w < 600;
 
     final items = _getItems(cart);
@@ -393,6 +393,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: const HZNavBar(),
+      endDrawer: !isDesktop ? const HZMobileDrawer() : null,
       body: SingleChildScrollView(
         child: Column(
           children: [

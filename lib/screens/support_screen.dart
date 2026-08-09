@@ -41,11 +41,12 @@ class _SupportScreenState extends State<SupportScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDesktop = MediaQuery.of(context).size.width >= 900;
+    final isDesktop = MediaQuery.of(context).size.width >= 1150;
 
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: const HZNavBar(),
+      endDrawer: !isDesktop ? const HZMobileDrawer() : null,
       body: SingleChildScrollView(
         child: Column(
           children: [

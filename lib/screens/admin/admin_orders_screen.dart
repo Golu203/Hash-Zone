@@ -27,6 +27,16 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
   String _activeFilter = 'All Orders'; // 'All Orders', 'Pending Payment', 'Order Received', 'Confirmed', 'Dispatched', 'Rejected', 'Today', 'This Month'
   String _sortOption = 'Newest First'; // 'Newest First', 'Oldest First'
 
+  late final Stream<List<CustomerOrder>> _ordersStream;
+  late Future<OrderDashboardSummary> _summaryFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _ordersStream = _service.streamAdminOrders();
+    _summaryFuture = _service.getOrdersDashboardSummary();
+  }
+
   @override
   void dispose() {
     _searchCtrl.dispose();
@@ -125,6 +135,9 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
                       await _service.confirmOrder(orderId: order.id, adminUser: adminEmail);
                       if (ctx.mounted) {
                         Navigator.pop(ctx);
+                        setState(() {
+                          _summaryFuture = _service.getOrdersDashboardSummary();
+                        });
                         ScaffoldMessenger.of(ctx).showSnackBar(
                           SnackBar(content: Text('Order #${order.id} confirmed successfully!', style: GoogleFonts.inter()), backgroundColor: const Color(0xFF2E7D32)),
                         );
@@ -279,6 +292,9 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
 
                       if (ctx.mounted) {
                         Navigator.pop(ctx);
+                        setState(() {
+                          _summaryFuture = _service.getOrdersDashboardSummary();
+                        });
                         ScaffoldMessenger.of(ctx).showSnackBar(
                           SnackBar(content: Text('Order #${order.id} rejected and reason recorded', style: GoogleFonts.inter()), backgroundColor: Colors.red),
                         );
@@ -401,6 +417,9 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
 
                       if (ctx.mounted) {
                         Navigator.pop(ctx);
+                        setState(() {
+                          _summaryFuture = _service.getOrdersDashboardSummary();
+                        });
                         ScaffoldMessenger.of(ctx).showSnackBar(
                           SnackBar(content: Text('Order #${order.id} marked as Dispatched!', style: GoogleFonts.inter()), backgroundColor: const Color(0xFF1565C0)),
                         );
@@ -486,6 +505,9 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
                           );
                           if (dialogCtx.mounted) {
                             Navigator.pop(dialogCtx);
+                            setState(() {
+                              _summaryFuture = _service.getOrdersDashboardSummary();
+                            });
                             ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                               content: Text('Order #${order.id} deleted successfully.', style: GoogleFonts.inter()),
                               backgroundColor: const Color(0xFFD32F2F),
@@ -688,13 +710,21 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
                               bytes: f.bytes!,
                               filename: '${order.id}_invoice.pdf',
                               folder: 'hashzone/invoices',
-                              resourceType: 'raw',
+                              resourceType: 'image',
                             ).timeout(const Duration(seconds: 30));
-                            await firestore.collection('orders').doc(order.id).set({'invoiceUrl': url}, SetOptions(merge: true));
+                            await firestore.collection('orders').doc(order.id).update({'invoiceUrl': url});
                             setDialogState(() {
                               isUploading = false;
                               currentInvoiceUrl = url;
                             });
+                            if (dialogCtx.mounted) {
+                              ScaffoldMessenger.of(dialogCtx).showSnackBar(
+                                SnackBar(
+                                  content: Text('Invoice uploaded successfully and is now available to the customer.', style: GoogleFonts.inter()),
+                                  backgroundColor: const Color(0xFF2E7D32),
+                                ),
+                              );
+                            }
                           } catch (e) {
                             setDialogState(() => isUploading = false);
                             if (dialogCtx.mounted) {
@@ -711,9 +741,52 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
                       ),
                       TextButton.icon(
                         style: TextButton.styleFrom(foregroundColor: Colors.red),
-                        onPressed: () async {
-                          await firestore.collection('orders').doc(order.id).set({'invoiceUrl': FieldValue.delete()}, SetOptions(merge: true));
-                          setDialogState(() => currentInvoiceUrl = null);
+                        onPressed: () {
+                          showDialog(
+                            context: context,
+                            builder: (confirmCtx) => AlertDialog(
+                              backgroundColor: Colors.white,
+                              title: Text(
+                                'Delete Invoice?',
+                                style: GoogleFonts.cormorantGaramond(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 22,
+                                  color: const Color(0xFFD32F2F),
+                                ),
+                              ),
+                              content: Text(
+                                'Are you sure you want to remove this invoice? The customer will no longer be able to access it.',
+                                style: GoogleFonts.inter(fontSize: 14, color: Colors.black87),
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(confirmCtx),
+                                  child: Text('CANCEL', style: GoogleFonts.inter(color: Colors.black54)),
+                                ),
+                                ElevatedButton(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFFD32F2F),
+                                    foregroundColor: Colors.white,
+                                    elevation: 0,
+                                  ),
+                                  onPressed: () async {
+                                    Navigator.pop(confirmCtx);
+                                    await firestore.collection('orders').doc(order.id).update({'invoiceUrl': FieldValue.delete()});
+                                    setDialogState(() => currentInvoiceUrl = null);
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text('Invoice deleted successfully.', style: GoogleFonts.inter()),
+                                          backgroundColor: const Color(0xFFD32F2F),
+                                        ),
+                                      );
+                                    }
+                                  },
+                                  child: Text('DELETE INVOICE', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+                                ),
+                              ],
+                            ),
+                          );
                         },
                         icon: const Icon(Icons.delete_outline, size: 14),
                         label: const Text('Delete'),
@@ -741,13 +814,21 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
                                 bytes: f.bytes!,
                                 filename: '${order.id}_invoice.pdf',
                                 folder: 'hashzone/invoices',
-                                resourceType: 'raw',
+                                resourceType: 'image',
                               ).timeout(const Duration(seconds: 30));
-                              await firestore.collection('orders').doc(order.id).set({'invoiceUrl': url}, SetOptions(merge: true));
+                              await firestore.collection('orders').doc(order.id).update({'invoiceUrl': url});
                               setDialogState(() {
                                 isUploading = false;
                                 currentInvoiceUrl = url;
                               });
+                              if (dialogCtx.mounted) {
+                                ScaffoldMessenger.of(dialogCtx).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Invoice uploaded successfully and is now available to the customer.', style: GoogleFonts.inter()),
+                                    backgroundColor: const Color(0xFF2E7D32),
+                                  ),
+                                );
+                              }
                             } catch (e) {
                               setDialogState(() => isUploading = false);
                               if (dialogCtx.mounted) {
@@ -800,12 +881,12 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
         ),
       ),
       body: FutureBuilder<OrderDashboardSummary>(
-        future: _service.getOrdersDashboardSummary(),
+        future: _summaryFuture,
         builder: (context, summarySnap) {
           final summary = summarySnap.data ?? const OrderDashboardSummary();
 
           return StreamBuilder<List<CustomerOrder>>(
-            stream: _service.streamAdminOrders(),
+            stream: _ordersStream,
             builder: (context, snap) {
               if (snap.connectionState == ConnectionState.waiting && !snap.hasData) {
                 return const Center(child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation(Colors.black)));

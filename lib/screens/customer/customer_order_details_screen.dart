@@ -34,10 +34,20 @@ class CustomerOrderDetailsScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: const HZNavBar(),
-      body: FutureBuilder<CustomerOrder?>(
-        future: service.getOrderById(orderId),
+      endDrawer: MediaQuery.of(context).size.width < 1150 ? const HZMobileDrawer() : null,
+      body: StreamBuilder<CustomerOrder?>(
+        stream: service.streamOrderById(orderId),
         builder: (context, snap) {
-          if (snap.connectionState == ConnectionState.waiting) {
+          if (snap.hasError) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Text('Error loading order details: ${snap.error}', style: GoogleFonts.inter(color: Colors.red)),
+              ),
+            );
+          }
+
+          if (snap.connectionState == ConnectionState.waiting && !snap.hasData) {
             return const Center(child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation(Colors.black)));
           }
 
@@ -247,45 +257,113 @@ class CustomerOrderDetailsScreen extends StatelessWidget {
                             ),
                           ],
                           const Divider(height: 32, color: Color(0xFFEEEEEE)),
-                          Text('DOCUMENTS', style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.black45, letterSpacing: 1.0)),
+                          Text('ORDER DOCUMENTS', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.black54, letterSpacing: 1.0)),
                           const SizedBox(height: 12),
-                          Wrap(
-                            spacing: 12,
-                            runSpacing: 10,
+                          Row(
                             children: [
-                              // 1. Order Summary Receipt
-                              if (order.receiptUrl != null && order.receiptUrl!.isNotEmpty)
-                                OutlinedButton.icon(
-                                  onPressed: () => _launchUrl(order.receiptUrl!),
-                                  icon: const Icon(Icons.picture_as_pdf, size: 14, color: Color(0xFF2E7D32)),
-                                  label: Text('Receipt (${order.receiptNumber ?? "HZR"})', style: GoogleFonts.inter(fontSize: 11, color: const Color(0xFF2E7D32), fontWeight: FontWeight.bold)),
-                                )
-                              else
-                                OutlinedButton.icon(
-                                  onPressed: () async {
-                                    final generator = ReceiptGeneratorService();
-                                    final url = await generator.generateAndUploadReceipt(order);
-                                    _launchUrl(url);
-                                  },
-                                  icon: const Icon(Icons.download, size: 14),
-                                  label: Text('Download Receipt', style: GoogleFonts.inter(fontSize: 11)),
+                              // Receipt block
+                              Expanded(
+                                child: Container(
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    border: Border.all(color: const Color(0xFFEEEEEE)),
+                                    borderRadius: BorderRadius.circular(12),
+                                    color: const Color(0xFFFAFAFA),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text('Order Receipt', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.bold)),
+                                      const SizedBox(height: 6),
+                                      if (order.receiptUrl != null && order.receiptUrl!.isNotEmpty) ...[
+                                        Text(order.receiptNumber ?? 'Official Receipt', style: GoogleFonts.inter(fontSize: 11, color: Colors.black54)),
+                                        const SizedBox(height: 12),
+                                        ElevatedButton.icon(
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: const Color(0xFF2E7D32),
+                                            foregroundColor: Colors.white,
+                                            elevation: 0,
+                                            minimumSize: const Size.fromHeight(40),
+                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                          ),
+                                          onPressed: () => _launchUrl(order.receiptUrl!),
+                                          icon: const Icon(Icons.picture_as_pdf, size: 14),
+                                          label: Text('VIEW RECEIPT', style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold)),
+                                        ),
+                                      ] else ...[
+                                        Text('Receipt not available.', style: GoogleFonts.inter(fontSize: 12, color: Colors.black38)),
+                                        const SizedBox(height: 12),
+                                        ElevatedButton.icon(
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: Colors.black,
+                                            foregroundColor: Colors.white,
+                                            elevation: 0,
+                                            minimumSize: const Size.fromHeight(40),
+                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                          ),
+                                          onPressed: () async {
+                                            final generator = ReceiptGeneratorService();
+                                            final url = await generator.generateAndUploadReceipt(order);
+                                            _launchUrl(url);
+                                          },
+                                          icon: const Icon(Icons.download, size: 14),
+                                          label: Text('GENERATE RECEIPT', style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold)),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
                                 ),
-
-                              // 2. Final Invoice (If uploaded by Admin)
-                              if (order.invoiceUrl != null && order.invoiceUrl!.isNotEmpty)
-                                OutlinedButton.icon(
-                                  onPressed: () => _launchUrl(order.invoiceUrl!),
-                                  icon: const Icon(Icons.description, size: 14, color: Color(0xFF1565C0)),
-                                  label: Text('Tax Invoice (PDF)', style: GoogleFonts.inter(fontSize: 11, color: const Color(0xFF1565C0), fontWeight: FontWeight.bold)),
+                              ),
+                              const SizedBox(width: 16),
+                              // Invoice block
+                              Expanded(
+                                child: Container(
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    border: Border.all(color: const Color(0xFFEEEEEE)),
+                                    borderRadius: BorderRadius.circular(12),
+                                    color: const Color(0xFFFAFAFA),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text('Invoice', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.bold)),
+                                      const SizedBox(height: 6),
+                                      if (order.invoiceUrl != null && order.invoiceUrl!.isNotEmpty) ...[
+                                        Text('Official PDF Invoice', style: GoogleFonts.inter(fontSize: 11, color: Colors.black54)),
+                                        const SizedBox(height: 12),
+                                        ElevatedButton.icon(
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: const Color(0xFF1565C0),
+                                            foregroundColor: Colors.white,
+                                            elevation: 0,
+                                            minimumSize: const Size.fromHeight(40),
+                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                          ),
+                                          onPressed: () => _launchUrl(order.invoiceUrl!),
+                                          icon: const Icon(Icons.description, size: 14),
+                                          label: Text('VIEW INVOICE', style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold)),
+                                        ),
+                                      ] else ...[
+                                        Text('Invoice not yet available.', style: GoogleFonts.inter(fontSize: 12, color: Colors.black38)),
+                                        const SizedBox(height: 12),
+                                        ElevatedButton.icon(
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: Colors.grey.shade300,
+                                            foregroundColor: Colors.black38,
+                                            elevation: 0,
+                                            minimumSize: const Size.fromHeight(40),
+                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                          ),
+                                          onPressed: null,
+                                          icon: const Icon(Icons.lock_outline, size: 14),
+                                          label: Text('NOT YET AVAILABLE', style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold)),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
                                 ),
-
-                              // 3. Payment Screenshot
-                              if (order.paymentInfo.cloudinaryScreenshotUrl.isNotEmpty)
-                                OutlinedButton.icon(
-                                  onPressed: () => _launchUrl(order.paymentInfo.cloudinaryScreenshotUrl),
-                                  icon: const Icon(Icons.image, size: 14, color: Colors.black54),
-                                  label: Text('Payment Receipt Screenshot', style: GoogleFonts.inter(fontSize: 11)),
-                                ),
+                              ),
                             ],
                           ),
                         ],

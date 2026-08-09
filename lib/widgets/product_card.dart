@@ -6,6 +6,7 @@ import '../models/product.dart';
 import '../providers/catalog_provider.dart';
 import '../providers/business_provider.dart';
 import '../providers/cart_provider.dart';
+import '../providers/customer_auth_provider.dart';
 import 'product_action_dialog.dart';
 import 'cloudinary_image_widget.dart';
 import 'context_menu_wrapper.dart';
@@ -290,12 +291,21 @@ class _CompactInquiryButton extends StatelessWidget {
       children: [
         Expanded(
           child: ElevatedButton(
-            onPressed: () => HZProductActionDialog.show(
-              context,
-              product: product,
-              isWhatsApp: false,
-              isBuyNow: true,
-            ),
+            onPressed: () {
+              final auth = Provider.of<CustomerAuthProvider>(context, listen: false);
+              if (!auth.isAuthenticated) {
+                final currentUri = GoRouterState.of(context).uri.toString();
+                final redirectTarget = '$currentUri${currentUri.contains('?') ? '&' : '?'}action=buy_now&productId=${product.id}';
+                context.go('/login?redirect=${Uri.encodeComponent(redirectTarget)}');
+              } else {
+                HZProductActionDialog.show(
+                  context,
+                  product: product,
+                  isWhatsApp: false,
+                  isBuyNow: true,
+                );
+              }
+            },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.black,
               foregroundColor: Colors.white,
@@ -317,12 +327,21 @@ class _CompactInquiryButton extends StatelessWidget {
         const SizedBox(width: 6),
         Expanded(
           child: OutlinedButton(
-            onPressed: () => HZProductActionDialog.show(
-              context,
-              product: product,
-              isWhatsApp: false,
-              isBuyNow: false,
-            ),
+            onPressed: () {
+              final auth = Provider.of<CustomerAuthProvider>(context, listen: false);
+              if (!auth.isAuthenticated) {
+                final currentUri = GoRouterState.of(context).uri.toString();
+                final redirectTarget = '$currentUri${currentUri.contains('?') ? '&' : '?'}action=add_to_cart&productId=${product.id}';
+                context.go('/login?redirect=${Uri.encodeComponent(redirectTarget)}');
+              } else {
+                HZProductActionDialog.show(
+                  context,
+                  product: product,
+                  isWhatsApp: false,
+                  isBuyNow: false,
+                );
+              }
+            },
             style: OutlinedButton.styleFrom(
               foregroundColor: Colors.black,
               side: const BorderSide(color: Colors.black, width: 1.0),

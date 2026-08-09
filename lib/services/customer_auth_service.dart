@@ -70,6 +70,10 @@ class CustomerAuthService {
   }
 
   // ── Firestore Profile ───────────────────────────────────────────────────────
+  Future<void> createProfileIfMissing(User user) async {
+    await _createProfile(user, authProvider: 'email');
+  }
+
   Future<CustomerProfile?> getProfile(String uid) async {
     final doc = await _db.collection('customers').doc(uid).get();
     if (!doc.exists || doc.data() == null) return null;

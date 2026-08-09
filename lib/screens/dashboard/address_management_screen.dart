@@ -21,6 +21,7 @@ class AddressManagementScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: const HZNavBar(),
+      endDrawer: MediaQuery.of(context).size.width < 1150 ? const HZMobileDrawer() : null,
       body: SingleChildScrollView(
         padding: EdgeInsets.symmetric(horizontal: isMobile ? 20 : 64, vertical: 32),
         child: Center(

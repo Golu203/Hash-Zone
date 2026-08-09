@@ -57,7 +57,7 @@ ${_messageController.text.trim()}
   @override
   Widget build(BuildContext context) {
     final business = Provider.of<BusinessProvider>(context);
-    final isDesktop = MediaQuery.of(context).size.width >= 900;
+    final isDesktop = MediaQuery.of(context).size.width >= 1150;
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       SeoHelper.updateMetadata(

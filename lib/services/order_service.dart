@@ -1,6 +1,7 @@
 // ─── OrderService ─────────────────────────────────────────────────────────────
 // Firestore collections: orders, orderTimeline, orderStatus, dispatchInformation, refundInformation, orderAudit
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import '../models/order_model.dart';
 
 class OrderDashboardSummary {
@@ -81,13 +82,21 @@ class OrderService {
 
   /// Streams orders for a specific customer
   Stream<List<CustomerOrder>> streamCustomerOrders(String customerId) {
+    debugPrint('[OrderService] streamCustomerOrders query started for customerId: "$customerId"');
     return _ordersRef
         .where('customerId', isEqualTo: customerId)
-        .orderBy('orderDate', descending: true)
         .snapshots()
-        .map((snap) => snap.docs
-            .map((doc) => CustomerOrder.fromMap(doc.data(), doc.id))
-            .toList());
+        .map((snap) {
+      debugPrint('[OrderService] streamCustomerOrders returned ${snap.docs.length} documents for customerId: "$customerId"');
+      final list = snap.docs.map((doc) {
+        final data = doc.data();
+        debugPrint('[OrderService] Doc ID: ${doc.id}, customerId in doc: "${data['customerId']}"');
+        return CustomerOrder.fromMap(data, doc.id);
+      }).toList();
+      // Sort in-memory to avoid requiring a composite index in Firestore
+      list.sort((a, b) => b.orderDate.compareTo(a.orderDate));
+      return list;
+    });
   }
 
   /// Fetches a single order by ID
@@ -95,6 +104,14 @@ class OrderService {
     final doc = await _ordersRef.doc(orderId).get();
     if (!doc.exists || doc.data() == null) return null;
     return CustomerOrder.fromMap(doc.data()!, doc.id);
+  }
+
+  /// Streams a single order by ID for real-time updates
+  Stream<CustomerOrder?> streamOrderById(String orderId) {
+    return _ordersRef.doc(orderId).snapshots().map((doc) {
+      if (!doc.exists || doc.data() == null) return null;
+      return CustomerOrder.fromMap(doc.data()!, doc.id);
+    });
   }
 
   /// Confirms an order

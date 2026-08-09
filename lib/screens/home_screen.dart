@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../models/hero_banner.dart';
+import '../models/product.dart';
 import '../providers/catalog_provider.dart';
 import '../widgets/context_menu_wrapper.dart';
 import '../widgets/footer.dart';
@@ -14,6 +15,7 @@ import '../widgets/skeleton_loaders.dart';
 import '../utils/seo_helper.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../providers/business_provider.dart';
+import '../widgets/product_action_dialog.dart';
 import '../services/navigation_memory_service.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -66,6 +68,33 @@ class _HomeScreenState extends State<HomeScreen> {
     final business = Provider.of<BusinessProvider>(context);
     _checkAndTriggerPromoPopup(business);
 
+    final uri = GoRouterState.of(context).uri;
+    final action = uri.queryParameters['action'];
+    final productId = uri.queryParameters['productId'];
+    if (!catalog.isLoading && (action == 'buy_now' || action == 'add_to_cart') && productId != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final newParams = Map<String, String>.from(uri.queryParameters)
+          ..remove('action')
+          ..remove('productId');
+        final newUri = uri.replace(queryParameters: newParams);
+        context.go(newUri.toString());
+
+        Product? targetProduct;
+        try {
+          targetProduct = catalog.products.firstWhere((p) => p.id == productId || p.slug == productId);
+        } catch (_) {}
+
+        if (targetProduct != null) {
+          HZProductActionDialog.show(
+            context,
+            product: targetProduct,
+            isWhatsApp: false,
+            isBuyNow: action == 'buy_now',
+          );
+        }
+      });
+    }
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       SeoHelper.updateMetadata(
         title: 'HASH ZONE | Premium Wholesale Clothing Manufacturer in Tiruppur',
@@ -75,7 +104,7 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     });
 
-    final isDesktop = MediaQuery.of(context).size.width >= 900;
+    final isDesktop = MediaQuery.of(context).size.width >= 1150;
 
     return Scaffold(
       backgroundColor: Colors.white,

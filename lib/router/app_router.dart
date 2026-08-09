@@ -71,7 +71,7 @@ final appRouter = GoRouter(
     if (isAuthRoute) return null;
 
     // Protected customer routes
-    final protectedRoutes = ['/profile', '/orders', '/dashboard', '/addresses', '/checkout'];
+    final protectedRoutes = ['/profile', '/orders', '/dashboard', '/addresses', '/checkout', '/cart'];
     final isProtected = protectedRoutes.any((r) => location.startsWith(r));
 
     if (isProtected && !isCustomerLoading && !customerAuth.isAuthenticated) {
@@ -213,6 +213,7 @@ final appRouter = GoRouter(
         return CustomerOrderDetailsScreen(orderId: id);
       },
     ),
+
 
     // ── Admin Portal Routes (unchanged) ───────────────────────────────────────
     GoRoute(

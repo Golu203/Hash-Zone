@@ -38,7 +38,7 @@ class _HZNavBarState extends State<HZNavBar> {
   Widget build(BuildContext context) {
     final business = Provider.of<BusinessProvider>(context);
     final catalog = Provider.of<CatalogProvider>(context);
-    final isDesktop = MediaQuery.of(context).size.width >= 900;
+    final isDesktop = MediaQuery.of(context).size.width >= 1150;
 
     return Container(
       color: Colors.white,

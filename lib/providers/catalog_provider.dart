@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math';
 import 'package:flutter/material.dart';
 import '../models/department.dart';
 import '../models/category.dart';
@@ -77,32 +76,20 @@ class CatalogProvider extends ChangeNotifier {
     });
 
     _prodSub = _firestoreService.streamProducts().listen((list) {
-      bool updatedAny = false;
-      for (var p in list) {
+      final processedList = list.map((p) {
         if (p.uniqueProductCode.trim().isEmpty) {
-          final code = _generateUniqueCode();
-          final updatedProduct = p.copyWith(uniqueProductCode: code);
-          _firestoreService.saveProduct(updatedProduct);
-          updatedAny = true;
+          return p.copyWith(uniqueProductCode: 'HZ-${p.id.hashCode.abs()}');
         }
-      }
-      if (!updatedAny) {
-        _products = list;
-        _isLoading = false;
-        notifyListeners();
-      }
+        return p;
+      }).toList();
+
+      _products = processedList;
+      _isLoading = false;
+      notifyListeners();
     });
   }
 
-  String _generateUniqueCode() {
-    const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-    final rnd = Random();
-    final buffer = StringBuffer();
-    for (var i = 0; i < 8; i++) {
-      buffer.write(chars[rnd.nextInt(chars.length)]);
-    }
-    return buffer.toString().toUpperCase();
-  }
+
 
   // Filter setters
   void setDepartmentFilter(String deptId) {
