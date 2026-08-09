@@ -24,6 +24,14 @@ class CustomerOrderDetailsScreen extends StatelessWidget {
     }
   }
 
+  /// Converts Cloudinary /image/upload/ URL to /raw/upload/ for PDF files.
+  String _toPdfUrl(String url) {
+    if (url.contains('/image/upload/')) {
+      return url.replaceFirst('/image/upload/', '/raw/upload/');
+    }
+    return url;
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDesktop = MediaQuery.of(context).size.width >= 900;
@@ -340,7 +348,7 @@ class CustomerOrderDetailsScreen extends StatelessWidget {
                                             minimumSize: const Size.fromHeight(40),
                                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                                           ),
-                                          onPressed: () => _launchUrl(order.invoiceUrl!),
+                                          onPressed: () => _launchUrl(_toPdfUrl(order.invoiceUrl!)),
                                           icon: const Icon(Icons.description, size: 14),
                                           label: Text('VIEW INVOICE', style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold)),
                                         ),

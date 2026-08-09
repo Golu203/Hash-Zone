@@ -21,6 +21,14 @@ class CustomerDocumentsScreen extends StatelessWidget {
     }
   }
 
+  /// Rewrites Cloudinary /image/upload/ to /raw/upload/ for PDF files.
+  String _toPdfUrl(String url) {
+    if (url.contains('/image/upload/')) {
+      return url.replaceFirst('/image/upload/', '/raw/upload/');
+    }
+    return url;
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDesktop = MediaQuery.of(context).size.width >= 900;
@@ -159,7 +167,7 @@ class CustomerDocumentsScreen extends StatelessWidget {
                                     title: 'Tax Invoice',
                                     subtitle: 'Official PDF Invoice',
                                     icon: Icons.description_outlined,
-                                    url: order.invoiceUrl!,
+                                    url: _toPdfUrl(order.invoiceUrl!),
                                   ),
                                 ],
                               ],

@@ -93,6 +93,16 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
     }
   }
 
+  /// Converts a Cloudinary image URL to a raw URL for PDF viewing.
+  /// Cloudinary stores PDFs under /raw/upload/ — if uploaded as 'image' by
+  /// mistake, the URL will have /image/upload/ which causes "Failed to load PDF".
+  String _toPdfUrl(String url) {
+    if (url.contains('/image/upload/')) {
+      return url.replaceFirst('/image/upload/', '/raw/upload/');
+    }
+    return url;
+  }
+
   void _copyToClipboard(String text, String label) {
     Clipboard.setData(ClipboardData(text: text));
     ScaffoldMessenger.of(context).showSnackBar(
@@ -689,8 +699,8 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
                     runSpacing: 8,
                     children: [
                       OutlinedButton.icon(
-                        onPressed: () => _launchUrl(currentInvoiceUrl!),
-                        icon: const Icon(Icons.visibility, size: 14),
+                        onPressed: () => _launchUrl(_toPdfUrl(currentInvoiceUrl!)),
+                        icon: const Icon(Icons.open_in_new, size: 14),
                         label: const Text('View Invoice'),
                       ),
                       OutlinedButton.icon(
@@ -710,7 +720,7 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
                               bytes: f.bytes!,
                               filename: '${order.id}_invoice.pdf',
                               folder: 'hashzone/invoices',
-                              resourceType: 'image',
+                              resourceType: 'raw',
                             ).timeout(const Duration(seconds: 30));
                             await firestore.collection('orders').doc(order.id).update({'invoiceUrl': url});
                             setDialogState(() {
@@ -814,7 +824,7 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
                                 bytes: f.bytes!,
                                 filename: '${order.id}_invoice.pdf',
                                 folder: 'hashzone/invoices',
-                                resourceType: 'image',
+                                resourceType: 'raw',
                               ).timeout(const Duration(seconds: 30));
                               await firestore.collection('orders').doc(order.id).update({'invoiceUrl': url});
                               setDialogState(() {
