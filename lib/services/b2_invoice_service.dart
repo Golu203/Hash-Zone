@@ -73,7 +73,7 @@ class B2InvoiceService {
     const signedHeaders = 'host';
     const payloadHash = 'UNSIGNED-PAYLOAD';
 
-    final canonicalRequest = 'GET\n$canonicalUri\n$canonicalQuery\n$canonicalHeaders$signedHeaders\n$payloadHash';
+    final canonicalRequest = 'GET\n$canonicalUri\n$canonicalQuery\n$canonicalHeaders\n$signedHeaders\n$payloadHash';
     final stringToSign = 'AWS4-HMAC-SHA256\n$amzDate\n$credentialScope\n${_sha256Hex(canonicalRequest)}';
 
     final signingKey = _getSigningKey(applicationKey, dateStamp, region, 's3');
@@ -152,7 +152,7 @@ class B2InvoiceService {
     final canonicalHeaders = 'host:$endpoint\nx-amz-content-sha256:$payloadHash\nx-amz-date:$amzDate\n';
     const signedHeaders = 'host;x-amz-content-sha256;x-amz-date';
 
-    final canonicalRequest = 'PUT\n$canonicalUri\n$canonicalQuery\n$canonicalHeaders$signedHeaders\n$payloadHash';
+    final canonicalRequest = 'PUT\n$canonicalUri\n$canonicalQuery\n$canonicalHeaders\n$signedHeaders\n$payloadHash';
     final credentialScope = '$dateStamp/$region/s3/aws4_request';
     final stringToSign = 'AWS4-HMAC-SHA256\n$amzDate\n$credentialScope\n${_sha256Hex(canonicalRequest)}';
 
@@ -215,7 +215,7 @@ class B2InvoiceService {
       final canonicalHeaders = 'host:$endpoint\nx-amz-content-sha256:$payloadHash\nx-amz-date:$amzDate\n';
       const signedHeaders = 'host;x-amz-content-sha256;x-amz-date';
 
-      final canonicalRequest = 'DELETE\n$canonicalUri\n$canonicalQuery\n$canonicalHeaders$signedHeaders\n$payloadHash';
+      final canonicalRequest = 'DELETE\n$canonicalUri\n$canonicalQuery\n$canonicalHeaders\n$signedHeaders\n$payloadHash';
       final credentialScope = '$dateStamp/$region/s3/aws4_request';
       final stringToSign = 'AWS4-HMAC-SHA256\n$amzDate\n$credentialScope\n${_sha256Hex(canonicalRequest)}';
 
