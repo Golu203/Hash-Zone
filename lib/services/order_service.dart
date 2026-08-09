@@ -57,14 +57,20 @@ class OrderService {
     final data = order.toMap();
     await docRef.set(data, SetOptions(merge: true));
 
-    // Audit log
-    await _auditRef.add({
-      'orderId': docRef.id,
-      'action': 'ORDER_CREATED',
-      'customerId': order.customerId,
-      'grandTotal': order.grandTotal,
-      'timestamp': FieldValue.serverTimestamp(),
-    });
+    // Audit log — non-fatal. Customers cannot write to orderAudit collection
+    // (admin-only Firestore rule), so we catch and silently ignore the error.
+    try {
+      await _auditRef.add({
+        'orderId': docRef.id,
+        'action': 'ORDER_CREATED',
+        'customerId': order.customerId,
+        'grandTotal': order.grandTotal,
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+    } catch (auditErr) {
+      // Non-fatal — audit is best-effort. Order document is the source of truth.
+      debugPrint('[OrderService] Audit log write skipped (non-admin): $auditErr');
+    }
 
     return docRef.id;
   }
