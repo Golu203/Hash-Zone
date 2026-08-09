@@ -417,6 +417,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             subtitle: 'Toggle OCR test mode, check live system connection health, run diagnostics.',
             icon: Icons.developer_mode_outlined,
             route: '/admin/developer-testing',
+            onTap: () => _showDevPasswordDialog(context),
           ),
           _moduleCard(
             context,
@@ -637,17 +638,137 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
+  void _showDevPasswordDialog(BuildContext context) {
+    final passwordCtrl = TextEditingController();
+    bool obscure = true;
+    String? errorText;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.black,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.lock_outline, color: Colors.white, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Developer Access',
+                  style: GoogleFonts.cormorantGaramond(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 22,
+                    color: Colors.black,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Please enter your developer password to access this section.',
+                style: GoogleFonts.inter(fontSize: 13, color: Colors.black54, height: 1.5),
+              ),
+              const SizedBox(height: 20),
+              TextField(
+                controller: passwordCtrl,
+                obscureText: obscure,
+                autofocus: true,
+                style: GoogleFonts.inter(fontSize: 14),
+                decoration: InputDecoration(
+                  labelText: 'Developer Password',
+                  labelStyle: GoogleFonts.inter(fontSize: 13, color: Colors.black54),
+                  errorText: errorText,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: Color(0xFFCCCCCC)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: Colors.black, width: 1.5),
+                  ),
+                  errorBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: Colors.red),
+                  ),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                      color: Colors.black45,
+                      size: 20,
+                    ),
+                    onPressed: () => setDialogState(() => obscure = !obscure),
+                  ),
+                ),
+                onSubmitted: (_) {
+                  if (passwordCtrl.text.trim() == 'kushal287') {
+                    Navigator.pop(ctx);
+                    context.go('/admin/developer-testing');
+                  } else {
+                    setDialogState(() => errorText = 'Incorrect password. Access denied.');
+                  }
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                passwordCtrl.dispose();
+              },
+              child: Text('Cancel', style: GoogleFonts.inter(color: Colors.black54, fontWeight: FontWeight.w600)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.black,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              ),
+              onPressed: () {
+                if (passwordCtrl.text.trim() == 'kushal287') {
+                  Navigator.pop(ctx);
+                  context.go('/admin/developer-testing');
+                } else {
+                  setDialogState(() => errorText = 'Incorrect password. Access denied.');
+                }
+              },
+              child: Text('Enter', style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _moduleCard(
     BuildContext context, {
     required String title,
     required String subtitle,
     required IconData icon,
     required String route,
+    VoidCallback? onTap,
   }) {
     final isMobile = MediaQuery.of(context).size.width < 600;
 
     return InkWell(
-      onTap: () => context.go(route),
+      onTap: onTap ?? () => context.go(route),
       borderRadius: BorderRadius.circular(16),
       child: Container(
         padding: EdgeInsets.all(isMobile ? 16 : 24),
