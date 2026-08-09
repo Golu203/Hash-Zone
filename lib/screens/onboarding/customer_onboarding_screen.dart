@@ -30,12 +30,7 @@ class _CustomerOnboardingScreenState extends State<CustomerOnboardingScreen>
   final _waCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
 
-  // Step 3 – Address
-  final _doorCtrl = TextEditingController();
-  final _roadCtrl = TextEditingController();
-  final _areaCtrl = TextEditingController();
-  final _cityCtrl = TextEditingController();
-  final _landmarkCtrl = TextEditingController();
+  // Step 3 – Address is fully managed by UnifiedAddressForm (no local controllers needed).
 
   // Form keys per step
   final _step1Key = GlobalKey<FormState>();
@@ -73,11 +68,7 @@ class _CustomerOnboardingScreenState extends State<CustomerOnboardingScreen>
     _phoneCtrl.dispose();
     _waCtrl.dispose();
     _emailCtrl.dispose();
-    _doorCtrl.dispose();
-    _roadCtrl.dispose();
-    _areaCtrl.dispose();
-    _cityCtrl.dispose();
-    _landmarkCtrl.dispose();
+
     super.dispose();
   }
 
@@ -106,10 +97,8 @@ class _CustomerOnboardingScreenState extends State<CustomerOnboardingScreen>
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
       );
-    } else {
-      // Step 3 complete — save and go to completion screen
-      await _saveAndFinish();
     }
+    // Step 3 submits exclusively via UnifiedAddressForm.onSave → _saveAndFinishWithAddress().
   }
 
   void _prevStep() {
@@ -124,20 +113,8 @@ class _CustomerOnboardingScreenState extends State<CustomerOnboardingScreen>
     }
   }
 
-  Future<void> _saveAndFinish() async {
-    final defaultAddr = CustomerAddress2(
-      id: '',
-      name: _nameCtrl.text.trim(),
-      phone: _phoneCtrl.text.trim(),
-      companyName: _companyCtrl.text.trim(),
-      doorNumber: _doorCtrl.text.trim(),
-      road: _roadCtrl.text.trim(),
-      area: _areaCtrl.text.trim(),
-      city: _cityCtrl.text.trim(),
-      landmark: _landmarkCtrl.text.trim(),
-    );
-    await _saveAndFinishWithAddress(defaultAddr);
-  }
+  // Note: Address is collected exclusively via UnifiedAddressForm in _buildStep3(),
+  // which calls _saveAndFinishWithAddress() directly with the complete 7-field address.
 
   Future<void> _saveAndFinishWithAddress(CustomerAddress2 fullAddress) async {
     setState(() => _isSaving = true);
@@ -382,11 +359,7 @@ class _CustomerOnboardingScreenState extends State<CustomerOnboardingScreen>
         submitButtonText: 'COMPLETE SETUP',
         isSaving: _isSaving,
         onSave: (address) async {
-          _doorCtrl.text = address.doorNumber;
-          _roadCtrl.text = address.road;
-          _areaCtrl.text = address.area;
-          _cityCtrl.text = address.city;
-          _landmarkCtrl.text = address.landmark;
+          // The complete 7-field address is provided by UnifiedAddressForm.
           await _saveAndFinishWithAddress(address);
         },
       ),

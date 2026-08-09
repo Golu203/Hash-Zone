@@ -186,19 +186,48 @@ class _AddressCard extends StatelessWidget {
             Text(address.label, style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14)),
             const SizedBox(height: 4),
           ],
-          Text(
-            [address.doorNumber, address.road, address.area, address.city]
-                .where((s) => s.isNotEmpty)
-                .join(', '),
-            style: GoogleFonts.inter(fontSize: 13, color: Colors.black54, height: 1.5),
-          ),
+          // Line 1: Door Number, Street
+          if ([address.doorNumber, address.road].any((s) => s.isNotEmpty))
+            Text(
+              [address.doorNumber, address.road].where((s) => s.isNotEmpty).join(', '),
+              style: GoogleFonts.inter(fontSize: 13, color: Colors.black54, height: 1.5),
+            ),
+          // Line 2: Area
+          if (address.area.isNotEmpty)
+            Text(
+              address.area,
+              style: GoogleFonts.inter(fontSize: 13, color: Colors.black54, height: 1.5),
+            ),
+          // Line 3: City, State - PIN Code
+          if ([address.city, address.state, address.pincode].any((s) => s.isNotEmpty)) ...[
+            Text(
+              _formatCityStatePinLine(address),
+              style: GoogleFonts.inter(fontSize: 13, color: Colors.black54, height: 1.5),
+            ),
+          ],
+          // Line 4: Landmark (optional)
           if (address.landmark.isNotEmpty) ...[
-            const SizedBox(height: 4),
-            Text('Near: ${address.landmark}', style: GoogleFonts.inter(fontSize: 12, color: Colors.black38)),
+            const SizedBox(height: 2),
+            Text(
+              'Near: ${address.landmark}',
+              style: GoogleFonts.inter(fontSize: 12, color: Colors.black38, height: 1.4),
+            ),
           ],
         ],
       ),
     );
+  }
+  /// Returns a formatted "City, State - PIN" line, handling partial data.
+  static String _formatCityStatePinLine(CustomerAddress2 a) {
+    final cityStr = a.city.trim();
+    final stateStr = a.state.trim();
+    final pinStr = a.pincode.trim();
+
+    final cityState = [cityStr, stateStr].where((s) => s.isNotEmpty).join(', ');
+    if (pinStr.isNotEmpty) {
+      return cityState.isNotEmpty ? '$cityState - $pinStr' : pinStr;
+    }
+    return cityState;
   }
 }
 
