@@ -68,8 +68,14 @@ class _CustomerLoginScreenState extends State<CustomerLoginScreen> {
       }
     } on FirebaseAuthException catch (e) {
       setState(() => _error = _friendlyError(e.code));
-    } catch (_) {
-      setState(() => _error = 'Google Sign-In failed. Please try again.');
+    } catch (e) {
+      // Detect popup-closed scenario from caught generic exceptions
+      final msg = e.toString().toLowerCase();
+      if (msg.contains('popup') && msg.contains('closed')) {
+        setState(() => _error = 'Google Sign-In was cancelled. Please try again.');
+      } else {
+        setState(() => _error = 'Google Sign-In failed. Please try again.');
+      }
     } finally {
       if (mounted) setState(() => _googleLoading = false);
     }
@@ -100,11 +106,21 @@ class _CustomerLoginScreenState extends State<CustomerLoginScreen> {
       case 'too-many-requests':
         return 'Too many attempts. Please wait a moment and try again.';
       case 'popup-closed-by-user':
-        return 'Google Sign-In was cancelled.';
+        return 'Google Sign-In was cancelled. Please try again.';
       case 'popup-blocked':
-        return 'Popup was blocked. Please allow popups for this site.';
+        return 'Popup was blocked. Please allow popups for this site and try again.';
+      case 'cancelled-popup-request':
+        return 'Sign-in was interrupted. Please try again.';
+      case 'unauthorized-domain':
+        return 'This domain is not authorized. Please contact support.';
+      case 'network-request-failed':
+        return 'Network error. Please check your connection and try again.';
+      case 'operation-not-allowed':
+        return 'This sign-in method is not enabled. Please contact support.';
+      case 'account-exists-with-different-credential':
+        return 'An account already exists with this email using a different sign-in method.';
       default:
-        return 'Authentication failed. Please try again.';
+        return 'Authentication failed ($code). Please try again.';
     }
   }
 
