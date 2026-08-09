@@ -219,14 +219,15 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
       debugPrint('[Checkout] Creating order $orderId for customer $customerId ($customerName)');
 
+      final profAddr = auth.profile?.address;
       final orderShippingAddr = OrderShippingAddress(
-        doorNumber: defaultAddr?.doorNumber ?? '',
-        road: defaultAddr?.road ?? '',
-        area: defaultAddr?.area ?? '',
-        city: defaultAddr?.city ?? '',
-        state: defaultAddr?.state ?? '',
-        pincode: defaultAddr?.pincode ?? '',
-        landmark: defaultAddr?.landmark ?? '',
+        doorNumber: (defaultAddr?.doorNumber.isNotEmpty == true ? defaultAddr!.doorNumber : profAddr?.doorNumber) ?? '',
+        road: (defaultAddr?.road.isNotEmpty == true ? defaultAddr!.road : profAddr?.road) ?? '',
+        area: (defaultAddr?.area.isNotEmpty == true ? defaultAddr!.area : profAddr?.area) ?? '',
+        city: (defaultAddr?.city.isNotEmpty == true ? defaultAddr!.city : profAddr?.city) ?? '',
+        state: (defaultAddr?.state.isNotEmpty == true ? defaultAddr!.state : profAddr?.state) ?? '',
+        pincode: (defaultAddr?.pincode.isNotEmpty == true ? defaultAddr!.pincode : profAddr?.pincode) ?? '',
+        landmark: (defaultAddr?.landmark.isNotEmpty == true ? defaultAddr!.landmark : profAddr?.landmark) ?? '',
       );
 
       final orderItems = checkoutItems.map((item) => OrderProductItem(

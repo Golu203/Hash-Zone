@@ -24,15 +24,39 @@ class CustomerAddress {
   });
 
   String get fullAddress {
-    final parts = [
-      if (doorNumber.trim().isNotEmpty) doorNumber,
-      if (road.trim().isNotEmpty) road,
-      if (area.trim().isNotEmpty) area,
-      if (city.trim().isNotEmpty) city,
-      if (state.trim().isNotEmpty) state,
-      if (pincode.trim().isNotEmpty) pincode,
-      if (landmark.trim().isNotEmpty) 'Near $landmark',
-    ];
+    final doorStr = doorNumber.trim();
+    final roadStr = road.trim();
+    final areaStr = area.trim();
+    final cityStr = city.trim();
+    final stateStr = state.trim();
+    final pinStr = pincode.trim();
+    var lmStr = landmark.trim();
+
+    if (lmStr.isNotEmpty) {
+      lmStr = lmStr.replaceAll(RegExp(r'\bNear\s+Near\b', caseSensitive: false), 'Near').trim();
+    }
+
+    final parts = <String>[];
+    if (doorStr.isNotEmpty) parts.add(doorStr);
+    if (roadStr.isNotEmpty) parts.add(roadStr);
+    if (areaStr.isNotEmpty) parts.add(areaStr);
+    if (cityStr.isNotEmpty) parts.add(cityStr);
+
+    if (stateStr.isNotEmpty && pinStr.isNotEmpty) {
+      parts.add('$stateStr - $pinStr');
+    } else {
+      if (stateStr.isNotEmpty) parts.add(stateStr);
+      if (pinStr.isNotEmpty) parts.add(pinStr);
+    }
+
+    if (lmStr.isNotEmpty) {
+      if (RegExp(r'^(near|opp|opposite|behind|beside)\b', caseSensitive: false).hasMatch(lmStr)) {
+        parts.add(lmStr);
+      } else {
+        parts.add('Near $lmStr');
+      }
+    }
+
     if (parts.isEmpty) return 'No address provided.';
     return parts.join(', ');
   }
@@ -50,12 +74,26 @@ class CustomerAddress {
   factory CustomerAddress.fromMap(Map<String, dynamic>? map) {
     if (map == null) return const CustomerAddress();
     return CustomerAddress(
-      doorNumber: map['doorNumber'] as String? ?? '',
-      road: map['road'] as String? ?? '',
-      area: map['area'] as String? ?? '',
+      doorNumber: map['doorNumber'] as String? ??
+          map['doorNo'] as String? ??
+          map['flatNo'] as String? ??
+          map['houseNo'] as String? ??
+          '',
+      road: map['road'] as String? ??
+          map['street'] as String? ??
+          map['addressLine1'] as String? ??
+          '',
+      area: map['area'] as String? ??
+          map['locality'] as String? ??
+          map['addressLine2'] as String? ??
+          '',
       city: map['city'] as String? ?? '',
       state: map['state'] as String? ?? '',
-      pincode: map['pincode'] as String? ?? '',
+      pincode: map['pincode'] as String? ??
+          map['zipCode'] as String? ??
+          map['postalCode'] as String? ??
+          map['pin'] as String? ??
+          '',
       landmark: map['landmark'] as String? ?? '',
     );
   }

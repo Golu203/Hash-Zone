@@ -71,15 +71,39 @@ class OrderShippingAddress {
   });
 
   String get fullAddress {
-    final parts = [
-      if (doorNumber.trim().isNotEmpty) doorNumber,
-      if (road.trim().isNotEmpty) road,
-      if (area.trim().isNotEmpty) area,
-      if (city.trim().isNotEmpty) city,
-      if (state.trim().isNotEmpty) state,
-      if (pincode.trim().isNotEmpty) pincode,
-      if (landmark.trim().isNotEmpty) 'Near $landmark',
-    ];
+    final doorStr = doorNumber.trim();
+    final roadStr = road.trim();
+    final areaStr = area.trim();
+    final cityStr = city.trim();
+    final stateStr = state.trim();
+    final pinStr = pincode.trim();
+    var lmStr = landmark.trim();
+
+    if (lmStr.isNotEmpty) {
+      lmStr = lmStr.replaceAll(RegExp(r'\bNear\s+Near\b', caseSensitive: false), 'Near').trim();
+    }
+
+    final parts = <String>[];
+    if (doorStr.isNotEmpty) parts.add(doorStr);
+    if (roadStr.isNotEmpty) parts.add(roadStr);
+    if (areaStr.isNotEmpty) parts.add(areaStr);
+    if (cityStr.isNotEmpty) parts.add(cityStr);
+
+    if (stateStr.isNotEmpty && pinStr.isNotEmpty) {
+      parts.add('$stateStr - $pinStr');
+    } else {
+      if (stateStr.isNotEmpty) parts.add(stateStr);
+      if (pinStr.isNotEmpty) parts.add(pinStr);
+    }
+
+    if (lmStr.isNotEmpty) {
+      if (RegExp(r'^(near|opp|opposite|behind|beside)\b', caseSensitive: false).hasMatch(lmStr)) {
+        parts.add(lmStr);
+      } else {
+        parts.add('Near $lmStr');
+      }
+    }
+
     if (parts.isEmpty) return 'No delivery address provided.';
     return parts.join(', ');
   }
@@ -96,14 +120,41 @@ class OrderShippingAddress {
 
   factory OrderShippingAddress.fromMap(Map<String, dynamic> map) {
     return OrderShippingAddress(
-      doorNumber: map['doorNumber'] as String? ?? '',
-      road: map['road'] as String? ?? '',
-      area: map['area'] as String? ?? '',
-      city: map['city'] as String? ?? '',
-      state: map['state'] as String? ?? '',
-      pincode: map['pincode'] as String? ?? '',
-      landmark: map['landmark'] as String? ?? '',
+      doorNumber: map['doorNumber'] as String? ??
+          map['doorNo'] as String? ??
+          map['flatNo'] as String? ??
+          map['houseNo'] as String? ??
+          map['building'] as String? ??
+          '',
+      road: map['road'] as String? ??
+          map['street'] as String? ??
+          map['addressLine1'] as String? ??
+          '',
+      area: map['area'] as String? ??
+          map['locality'] as String? ??
+          map['addressLine2'] as String? ??
+          '',
+      city: map['city'] as String? ??
+          map['town'] as String? ??
+          '',
+      state: map['state'] as String? ??
+          map['region'] as String? ??
+          '',
+      pincode: map['pincode'] as String? ??
+          map['zipCode'] as String? ??
+          map['postalCode'] as String? ??
+          map['pin'] as String? ??
+          '',
+      landmark: map['landmark'] as String? ??
+          map['nearby'] as String? ??
+          '',
     );
+  }
+
+  factory OrderShippingAddress.fromRawString(String raw) {
+    if (raw.trim().isEmpty) return const OrderShippingAddress();
+    final cleaned = raw.replaceAll(RegExp(r'\bNear\s+Near\b', caseSensitive: false), 'Near').trim();
+    return OrderShippingAddress(road: cleaned);
   }
 }
 
@@ -338,7 +389,11 @@ class CustomerOrder {
       orderDate: (map['orderDate'] as Timestamp?)?.toDate() ?? DateTime.now(),
       status: map['status'] as String? ?? 'Order Received',
       shippingAddress: map['shippingAddress'] != null
-          ? OrderShippingAddress.fromMap(map['shippingAddress'] as Map<String, dynamic>)
+          ? (map['shippingAddress'] is Map
+              ? OrderShippingAddress.fromMap(map['shippingAddress'] as Map<String, dynamic>)
+              : (map['shippingAddress'] is String
+                  ? OrderShippingAddress.fromRawString(map['shippingAddress'] as String)
+                  : const OrderShippingAddress()))
           : const OrderShippingAddress(),
       customerNote: map['customerNote'] as String? ?? '',
       paymentInfo: map['paymentInfo'] != null
