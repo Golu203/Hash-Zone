@@ -50,9 +50,11 @@ final appRouter = GoRouter(
     final isGoingToAdminLogin = location == '/admin/login';
     final adminService = AuthService();
     final adminUser = adminService.currentUser;
-    // Admin must be authenticated AND have an @hashzone.com email
+    // Admin must be authenticated AND have an @hashzone.com or @hashzone.co.in email
     final isAdminAuthenticated = adminUser != null &&
-        (adminUser.email?.endsWith('@hashzone.com') ?? false);
+        ((adminUser.email?.endsWith('@hashzone.com') ?? false) ||
+         (adminUser.email?.endsWith('@hashzone.co.in') ?? false));
+
 
     if (isGoingToAdmin && !isGoingToAdminLogin && !isAdminAuthenticated) {
       return '/admin/login';

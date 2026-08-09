@@ -11,8 +11,10 @@ import '../../services/order_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/order_lock_service.dart';
 import '../../services/receipt_generator_service.dart';
+import 'package:http/http.dart' as http;
 import '../../widgets/whatsapp_message_centre_dialog.dart';
 import '../../services/cloudinary_service.dart';
+
 
 class AdminOrdersScreen extends StatefulWidget {
   const AdminOrdersScreen({super.key});
@@ -88,8 +90,14 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
   Future<void> _launchUrl(String url) async {
     if (url.isEmpty) return;
     final uri = Uri.parse(url);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    try {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        await launchUrl(uri);
+      }
+    } catch (_) {
+      await launchUrl(uri);
     }
   }
 
@@ -714,15 +722,48 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
                             }
                             return;
                           }
+                          final name = f.name.toLowerCase();
+                          if (!name.endsWith('.pdf')) {
+                            if (dialogCtx.mounted) {
+                              ScaffoldMessenger.of(dialogCtx).showSnackBar(const SnackBar(content: Text('Only PDF files are accepted.')));
+                            }
+                            return;
+                          }
                           setDialogState(() => isUploading = true);
                           try {
-                            final url = await CloudinaryService().uploadFile(
+                            final data = await CloudinaryService().uploadInvoice(
                               bytes: f.bytes!,
                               filename: '${order.id}_invoice.pdf',
                               folder: 'hashzone/invoices',
-                              resourceType: 'raw',
                             ).timeout(const Duration(seconds: 30));
-                            await firestore.collection('orders').doc(order.id).update({'invoiceUrl': url});
+                            final url = data['secure_url'] as String? ?? '';
+                            if (url.isEmpty) {
+                              throw Exception('Cloudinary secure_url is empty.');
+                            }
+                            // Verification Phase (Non-destructive check)
+                            try {
+                              final headRes = await http.head(Uri.parse(url)).timeout(const Duration(seconds: 5));
+                              if (headRes.statusCode != 200) {
+                                final cldError = headRes.headers['x-cld-error'] ?? '';
+                                if (cldError.isNotEmpty) {
+                                  debugPrint('Cloudinary HEAD header warning: $cldError');
+                                }
+                              }
+                            } catch (e) {
+                              debugPrint('Non-critical verification check skipped: $e');
+                            }
+                            await firestore.collection('orders').doc(order.id).update({
+                              'invoiceUrl': url,
+                              'invoice': {
+                                'available': true,
+                                'url': url,
+                                'publicId': data['public_id'] as String? ?? '',
+                                'resourceType': data['resource_type'] as String? ?? 'raw',
+                                'format': data['format'] as String? ?? 'pdf',
+                                'fileName': data['original_filename'] as String? ?? '',
+                                'uploadedAt': data['created_at'] as String? ?? '',
+                              }
+                            });
                             setDialogState(() {
                               isUploading = false;
                               currentInvoiceUrl = url;
@@ -741,7 +782,7 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
                               ScaffoldMessenger.of(dialogCtx).showSnackBar(SnackBar(
                                 content: Text('Invoice upload failed: $e', style: GoogleFonts.inter()),
                                 backgroundColor: Colors.red.shade700,
-                                duration: const Duration(seconds: 6),
+                                duration: const Duration(seconds: 8),
                               ));
                             }
                           }
@@ -809,47 +850,80 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
                     onPressed: isUploading
                         ? null
                         : () async {
-                            final res = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['pdf'], withData: true);
-                            if (res == null || res.files.isEmpty || res.files.first.bytes == null) return;
-                            final f = res.files.first;
-                            if (f.size > 10 * 1024 * 1024) {
-                              if (dialogCtx.mounted) {
-                                ScaffoldMessenger.of(dialogCtx).showSnackBar(const SnackBar(content: Text('File exceeds maximum size limit of 10MB.')));
+                              final res = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['pdf'], withData: true);
+                              if (res == null || res.files.isEmpty || res.files.first.bytes == null) return;
+                              final f = res.files.first;
+                              if (f.size > 10 * 1024 * 1024) {
+                                if (dialogCtx.mounted) {
+                                  ScaffoldMessenger.of(dialogCtx).showSnackBar(const SnackBar(content: Text('File exceeds maximum size limit of 10MB.')));
+                                }
+                                return;
                               }
-                              return;
-                            }
-                            setDialogState(() => isUploading = true);
-                            try {
-                              final url = await CloudinaryService().uploadFile(
-                                bytes: f.bytes!,
-                                filename: '${order.id}_invoice.pdf',
-                                folder: 'hashzone/invoices',
-                                resourceType: 'raw',
-                              ).timeout(const Duration(seconds: 30));
-                              await firestore.collection('orders').doc(order.id).update({'invoiceUrl': url});
-                              setDialogState(() {
-                                isUploading = false;
-                                currentInvoiceUrl = url;
-                              });
-                              if (dialogCtx.mounted) {
-                                ScaffoldMessenger.of(dialogCtx).showSnackBar(
-                                  SnackBar(
-                                    content: Text('Invoice uploaded successfully and is now available to the customer.', style: GoogleFonts.inter()),
-                                    backgroundColor: const Color(0xFF2E7D32),
-                                  ),
-                                );
+                              final name = f.name.toLowerCase();
+                              if (!name.endsWith('.pdf')) {
+                                if (dialogCtx.mounted) {
+                                  ScaffoldMessenger.of(dialogCtx).showSnackBar(const SnackBar(content: Text('Only PDF files are accepted.')));
+                                }
+                                return;
                               }
-                            } catch (e) {
-                              setDialogState(() => isUploading = false);
-                              if (dialogCtx.mounted) {
-                                ScaffoldMessenger.of(dialogCtx).showSnackBar(SnackBar(
-                                  content: Text('Invoice upload failed: $e', style: GoogleFonts.inter()),
-                                  backgroundColor: Colors.red.shade700,
-                                  duration: const Duration(seconds: 6),
-                                ));
+                              setDialogState(() => isUploading = true);
+                              try {
+                                final data = await CloudinaryService().uploadInvoice(
+                                  bytes: f.bytes!,
+                                  filename: '${order.id}_invoice.pdf',
+                                  folder: 'hashzone/invoices',
+                                ).timeout(const Duration(seconds: 30));
+                                final url = data['secure_url'] as String? ?? '';
+                                if (url.isEmpty) {
+                                  throw Exception('Cloudinary secure_url is empty.');
+                                }
+                                // Verification Phase (Non-destructive check)
+                                try {
+                                  final headRes = await http.head(Uri.parse(url)).timeout(const Duration(seconds: 5));
+                                  if (headRes.statusCode != 200) {
+                                    final cldError = headRes.headers['x-cld-error'] ?? '';
+                                    if (cldError.isNotEmpty) {
+                                      debugPrint('Cloudinary HEAD header warning: $cldError');
+                                    }
+                                  }
+                                } catch (e) {
+                                  debugPrint('Non-critical verification check skipped: $e');
+                                }
+                                await firestore.collection('orders').doc(order.id).update({
+                                  'invoiceUrl': url,
+                                  'invoice': {
+                                    'available': true,
+                                    'url': url,
+                                    'publicId': data['public_id'] as String? ?? '',
+                                    'resourceType': data['resource_type'] as String? ?? 'raw',
+                                    'format': data['format'] as String? ?? 'pdf',
+                                    'fileName': data['original_filename'] as String? ?? '',
+                                    'uploadedAt': data['created_at'] as String? ?? '',
+                                  }
+                                });
+                                setDialogState(() {
+                                  isUploading = false;
+                                  currentInvoiceUrl = url;
+                                });
+                                if (dialogCtx.mounted) {
+                                  ScaffoldMessenger.of(dialogCtx).showSnackBar(
+                                    SnackBar(
+                                      content: Text('Invoice uploaded successfully and is now available to the customer.', style: GoogleFonts.inter()),
+                                      backgroundColor: const Color(0xFF2E7D32),
+                                    ),
+                                  );
+                                }
+                              } catch (e) {
+                                setDialogState(() => isUploading = false);
+                                if (dialogCtx.mounted) {
+                                  ScaffoldMessenger.of(dialogCtx).showSnackBar(SnackBar(
+                                    content: Text('Invoice upload failed: $e', style: GoogleFonts.inter()),
+                                    backgroundColor: Colors.red.shade700,
+                                    duration: const Duration(seconds: 6),
+                                  ));
+                                }
                               }
-                            }
-                          },
+                            },
                     icon: isUploading
                         ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation(Colors.white)))
                         : const Icon(Icons.upload_file, size: 18),
@@ -1365,6 +1439,71 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
 
   // Product Table
   Widget _buildProductTable(CustomerOrder order) {
+    final isMobile = MediaQuery.of(context).size.width < 750;
+
+    if (isMobile) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: order.items.map((item) => Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            border: Border.all(color: const Color(0xFFEEEEEE)),
+            borderRadius: BorderRadius.circular(10),
+            color: Colors.white,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(item.title, style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87)),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('SKU / Code:', style: GoogleFonts.inter(fontSize: 12, color: Colors.black45)),
+                  Text('${item.sku} / ${item.internalProductCode}', style: GoogleFonts.inter(fontSize: 12, color: Colors.black87)),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Size:', style: GoogleFonts.inter(fontSize: 12, color: Colors.black45)),
+                  Text(item.size, style: GoogleFonts.inter(fontSize: 12, color: Colors.black87)),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Qty:', style: GoogleFonts.inter(fontSize: 12, color: Colors.black45)),
+                  Text('${item.quantity}', style: GoogleFonts.inter(fontSize: 12, color: Colors.black87)),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Total:', style: GoogleFonts.inter(fontSize: 12, color: Colors.black45)),
+                  Text('₹${item.lineTotal.toStringAsFixed(0)}', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87)),
+                ],
+              ),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: () => _launchUrl(item.imageUrl),
+                icon: const Icon(Icons.open_in_new, size: 12),
+                label: Text('View Image', style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold)),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size.fromHeight(36),
+                  padding: EdgeInsets.zero,
+                ),
+              ),
+            ],
+          ),
+        )).toList(),
+      );
+    }
+
     return Container(
       decoration: BoxDecoration(
         border: Border.all(color: const Color(0xFFEEEEEE)),

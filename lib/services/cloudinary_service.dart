@@ -114,6 +114,40 @@ class CloudinaryService {
     }
   }
 
+  /// Uploads raw invoice PDF directly to Cloudinary and returns the JSON metadata response.
+  Future<Map<String, dynamic>> uploadInvoice({
+    required Uint8List bytes,
+    required String filename,
+    required String folder,
+    String cloudName = 'um227ll2',
+    String uploadPreset = 'hashzone_products',
+  }) async {
+    final effectiveCloudName = cloudName.isNotEmpty ? cloudName : 'um227ll2';
+    final effectivePreset = uploadPreset.isNotEmpty ? uploadPreset : 'hashzone_products';
+    final effectiveFolder = folder.isNotEmpty ? folder : 'hashzone/invoices';
+
+    final uri = Uri.parse('https://api.cloudinary.com/v1_1/$effectiveCloudName/raw/upload');
+
+    final request = http.MultipartRequest('POST', uri)
+      ..fields['upload_preset'] = effectivePreset
+      ..fields['folder'] = effectiveFolder
+      ..files.add(http.MultipartFile.fromBytes(
+        'file',
+        bytes,
+        filename: filename,
+      ));
+
+    final streamedResponse = await request.send();
+    final response = await http.Response.fromStream(streamedResponse);
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    } else {
+      throw Exception('Cloudinary upload failed [Status ${response.statusCode}]: ${response.body}');
+    }
+  }
+
+
   /// Triggers a secure serverless deletion request via Vercel backend using the image's publicId.
   Future<bool> deleteImage(String publicId) async {
     if (publicId.isEmpty) return false;
