@@ -76,18 +76,17 @@ class OrderService {
   }
 
   /// Streams admin orders with lazy loading / limit options
-  Stream<List<CustomerOrder>> streamAdminOrders({int limit = 50}) {
-    return _ordersRef
-        .orderBy('orderDate', descending: true)
-        .limit(limit)
-        .snapshots()
-        .handleError((err) {
-          debugPrint('[OrderService] streamAdminOrders error: $err');
-          return;
-        })
-        .map((snap) => snap.docs
-            .map((doc) => CustomerOrder.fromMap(doc.data(), doc.id))
-            .toList());
+  Stream<List<CustomerOrder>> streamAdminOrders({int limit = 100}) {
+    return _ordersRef.snapshots().map((snap) {
+      final list = snap.docs
+          .map((doc) => CustomerOrder.fromMap(doc.data(), doc.id))
+          .toList();
+      list.sort((a, b) => b.orderDate.compareTo(a.orderDate));
+      if (list.length > limit) {
+        return list.take(limit).toList();
+      }
+      return list;
+    });
   }
 
   /// Streams orders for a specific customer

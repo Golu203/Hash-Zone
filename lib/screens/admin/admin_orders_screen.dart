@@ -935,6 +935,34 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
           return StreamBuilder<List<CustomerOrder>>(
             stream: _ordersStream,
             builder: (context, snap) {
+              if (snap.hasError) {
+                return Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(32.0),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                        const SizedBox(height: 16),
+                        Text('Error loading orders: ${snap.error}', style: GoogleFonts.inter(fontSize: 14, color: Colors.black87), textAlign: TextAlign.center),
+                        const SizedBox(height: 16),
+                        ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(backgroundColor: Colors.black, foregroundColor: Colors.white),
+                          onPressed: () {
+                            setState(() {
+                              _ordersStream = _service.streamAdminOrders();
+                              _summaryFuture = _service.getOrdersDashboardSummary();
+                            });
+                          },
+                          icon: const Icon(Icons.refresh, size: 16),
+                          label: Text('RETRY LOADING ORDERS', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }
+
               if (snap.connectionState == ConnectionState.waiting && !snap.hasData) {
                 return const Center(child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation(Colors.black)));
               }
