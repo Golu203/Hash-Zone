@@ -1,6 +1,6 @@
 Add-Type -AssemblyName System.Drawing
 
-$srcPath = 'a:\Hashzone\WhatsApp Image 2026-07-24 at 11.35.24 AM gg.jpeg'
+$srcPath = 'a:\Hashzone\assets\images\logo_new.jpg'
 $outDir  = 'a:\Hashzone\_favicon_gen'
 
 if (-not (Test-Path $outDir)) { New-Item -ItemType Directory -Path $outDir | Out-Null }
