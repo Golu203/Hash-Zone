@@ -108,6 +108,59 @@ class OrderShippingAddress {
     return parts.join(', ');
   }
 
+  String get formattedMultiLine {
+    final doorStr = doorNumber.trim();
+    final roadStr = road.trim();
+    final areaStr = area.trim();
+    final cityStr = city.trim();
+    final stateStr = state.trim();
+    final pinStr = pincode.trim();
+    var lmStr = landmark.trim();
+
+    if (lmStr.isNotEmpty) {
+      lmStr = lmStr.replaceAll(RegExp(r'\bNear\s+Near\b', caseSensitive: false), 'Near').trim();
+    }
+
+    final line1Parts = <String>[];
+    if (doorStr.isNotEmpty) line1Parts.add(doorStr);
+    if (roadStr.isNotEmpty) line1Parts.add(roadStr);
+
+    final line2Parts = <String>[];
+    if (areaStr.isNotEmpty) line2Parts.add(areaStr);
+
+    final line3Parts = <String>[];
+    if (cityStr.isNotEmpty) line3Parts.add(cityStr);
+    if (stateStr.isNotEmpty && pinStr.isNotEmpty) {
+      line3Parts.add('$stateStr - $pinStr');
+    } else {
+      if (stateStr.isNotEmpty) line3Parts.add(stateStr);
+      if (pinStr.isNotEmpty) line3Parts.add(pinStr);
+    }
+
+    String? landmarkLine;
+    if (lmStr.isNotEmpty) {
+      if (RegExp(r'^(near|opp|opposite|behind|beside)\b', caseSensitive: false).hasMatch(lmStr)) {
+        landmarkLine = lmStr;
+      } else {
+        landmarkLine = 'Near $lmStr';
+      }
+    }
+
+    final lines = <String>[
+      if (line1Parts.isNotEmpty) line1Parts.join(', '),
+      if (line2Parts.isNotEmpty) line2Parts.join(', '),
+      if (line3Parts.isNotEmpty) line3Parts.join(', '),
+      if (landmarkLine != null) landmarkLine,
+    ];
+
+    if (lines.isEmpty) return 'No delivery address provided.';
+    return lines.join('\n');
+  }
+
+  String get formattedHtml {
+    return formattedMultiLine.replaceAll('\n', '<br>');
+  }
+
   Map<String, dynamic> toMap() => {
         'doorNumber': doorNumber,
         'road': road,

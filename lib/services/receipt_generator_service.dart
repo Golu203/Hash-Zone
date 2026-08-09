@@ -90,7 +90,7 @@ class ReceiptGeneratorService {
         </div>
         <div style="width: 48%;">
           <div class="section-title">Shipping Address</div>
-          <div>${order.shippingAddress.fullAddress}</div>
+          <div>${order.shippingAddress.formattedHtml}</div>
         </div>
       </div>
 

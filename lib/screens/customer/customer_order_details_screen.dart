@@ -280,7 +280,7 @@ class CustomerOrderDetailsScreen extends StatelessWidget {
                                         children: [
                                           Text('Shipping Address', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.black54)),
                                           const SizedBox(height: 8),
-                                          Text(order.shippingAddress.fullAddress, style: GoogleFonts.inter(fontSize: 13, height: 1.5)),
+                                          Text(order.shippingAddress.formattedMultiLine, style: GoogleFonts.inter(fontSize: 13, height: 1.5)),
                                         ],
                                       ),
                                     ),
@@ -313,7 +313,7 @@ class CustomerOrderDetailsScreen extends StatelessWidget {
                                           children: [
                                             Text('Shipping Address', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.black54)),
                                             const SizedBox(height: 8),
-                                            Text(order.shippingAddress.fullAddress, style: GoogleFonts.inter(fontSize: 13, height: 1.5)),
+                                            Text(order.shippingAddress.formattedMultiLine, style: GoogleFonts.inter(fontSize: 13, height: 1.5)),
                                           ],
                                         ),
                                       ),

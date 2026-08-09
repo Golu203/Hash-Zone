@@ -1401,7 +1401,7 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
       children: [
         Text('DELIVERY ADDRESS', style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.black45, letterSpacing: 1.0)),
         const SizedBox(height: 8),
-        Text(order.shippingAddress.fullAddress, style: GoogleFonts.inter(fontSize: 13, color: Colors.black87, height: 1.5)),
+        Text(order.shippingAddress.formattedMultiLine, style: GoogleFonts.inter(fontSize: 13, color: Colors.black87, height: 1.5)),
       ],
     );
   }
