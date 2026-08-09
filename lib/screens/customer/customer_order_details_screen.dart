@@ -11,6 +11,8 @@ import '../../widgets/smart_back_button.dart';
 import 'package:provider/provider.dart';
 import '../../providers/customer_auth_provider.dart';
 import '../../services/receipt_generator_service.dart';
+import '../../services/b2_invoice_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 class CustomerOrderDetailsScreen extends StatelessWidget {
   final String orderId;
 
@@ -36,6 +38,23 @@ class CustomerOrderDetailsScreen extends StatelessWidget {
       return url.replaceFirst('/image/upload/', '/raw/upload/');
     }
     return url;
+  }
+
+  void _handleCustomerInvoiceView(BuildContext context, CustomerOrder order) {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null || currentUser.uid != order.customerId) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Access Denied: You are only authorized to access your own order invoices.', style: GoogleFonts.inter()),
+          backgroundColor: Colors.red.shade700,
+        ),
+      );
+      return;
+    }
+
+    if (order.invoiceUrl == null || order.invoiceUrl!.isEmpty) return;
+    final accessUrl = B2InvoiceService().generatePresignedGetUrl(order.invoiceUrl!);
+    _launchUrl(accessUrl);
   }
 
   @override
@@ -449,7 +468,7 @@ class CustomerOrderDetailsScreen extends StatelessWidget {
                                                 minimumSize: const Size.fromHeight(40),
                                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                                               ),
-                                              onPressed: () => _launchUrl(_toPdfUrl(order.invoiceUrl!)),
+                                              onPressed: () => _handleCustomerInvoiceView(context, order),
                                               icon: const Icon(Icons.description, size: 14),
                                               label: Text('VIEW INVOICE', style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold)),
                                             ),
@@ -555,7 +574,7 @@ class CustomerOrderDetailsScreen extends StatelessWidget {
                                                   minimumSize: const Size.fromHeight(40),
                                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                                                 ),
-                                                onPressed: () => _launchUrl(_toPdfUrl(order.invoiceUrl!)),
+                                                onPressed: () => _handleCustomerInvoiceView(context, order),
                                                 icon: const Icon(Icons.description, size: 14),
                                                 label: Text('VIEW INVOICE', style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold)),
                                               ),

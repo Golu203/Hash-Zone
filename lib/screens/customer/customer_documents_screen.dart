@@ -9,12 +9,14 @@ import '../../services/order_service.dart';
 import '../../widgets/navbar.dart';
 import '../../widgets/footer.dart';
 import '../../widgets/smart_back_button.dart';
+import '../../services/b2_invoice_service.dart';
 
 class CustomerDocumentsScreen extends StatelessWidget {
   const CustomerDocumentsScreen({super.key});
 
-  Future<void> _launchUrl(String url) async {
-    if (url.isEmpty) return;
+  Future<void> _launchUrl(String rawUrl) async {
+    if (rawUrl.isEmpty) return;
+    final url = B2InvoiceService().generatePresignedGetUrl(rawUrl);
     final uri = Uri.parse(url);
     try {
       if (await canLaunchUrl(uri)) {

@@ -14,6 +14,7 @@ import '../../services/receipt_generator_service.dart';
 import 'package:http/http.dart' as http;
 import '../../widgets/whatsapp_message_centre_dialog.dart';
 import '../../services/cloudinary_service.dart';
+import '../../services/b2_invoice_service.dart';
 
 
 class AdminOrdersScreen extends StatefulWidget {
@@ -669,6 +670,7 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
 
   void _showUploadInvoice(CustomerOrder order) {
     final firestore = FirebaseFirestore.instance;
+    final b2Service = B2InvoiceService();
     bool isUploading = false;
     String? currentInvoiceUrl = order.invoiceUrl;
 
@@ -687,7 +689,7 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Upload official PDF invoice for Order #${order.id}. Accepts PDF format up to 10MB.', style: GoogleFonts.inter(fontSize: 12, color: Colors.black54)),
+                Text('Upload official PDF invoice for Order #${order.id} to Backblaze B2. Accepts PDF format up to 10MB.', style: GoogleFonts.inter(fontSize: 12, color: Colors.black54)),
                 const SizedBox(height: 16),
                 if (invoiceAvailable) ...[
                   Container(
@@ -697,7 +699,7 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
                       children: [
                         const Icon(Icons.description, color: Color(0xFF1565C0), size: 18),
                         const SizedBox(width: 8),
-                        Expanded(child: Text('Invoice PDF uploaded & available to customer.', style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF1565C0)))),
+                        Expanded(child: Text('Invoice PDF stored securely in Backblaze B2 & available to customer.', style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF1565C0)))),
                       ],
                     ),
                   ),
@@ -707,9 +709,20 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
                     runSpacing: 8,
                     children: [
                       OutlinedButton.icon(
-                        onPressed: () => _launchUrl(_toPdfUrl(currentInvoiceUrl!)),
+                        onPressed: () {
+                          final accessUrl = b2Service.generatePresignedGetUrl(currentInvoiceUrl!);
+                          _launchUrl(accessUrl);
+                        },
                         icon: const Icon(Icons.open_in_new, size: 14),
                         label: const Text('View Invoice'),
+                      ),
+                      OutlinedButton.icon(
+                        onPressed: () {
+                          final accessUrl = b2Service.generatePresignedGetUrl(currentInvoiceUrl!);
+                          _launchUrl(accessUrl);
+                        },
+                        icon: const Icon(Icons.download, size: 14),
+                        label: const Text('Download Invoice'),
                       ),
                       OutlinedButton.icon(
                         onPressed: () async {
@@ -722,56 +735,28 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
                             }
                             return;
                           }
-                          final name = f.name.toLowerCase();
-                          if (!name.endsWith('.pdf')) {
-                            if (dialogCtx.mounted) {
-                              ScaffoldMessenger.of(dialogCtx).showSnackBar(const SnackBar(content: Text('Only PDF files are accepted.')));
-                            }
-                            return;
-                          }
                           setDialogState(() => isUploading = true);
                           try {
-                            final data = await CloudinaryService().uploadInvoice(
+                            final metadata = await b2Service.uploadInvoice(
                               bytes: f.bytes!,
                               filename: '${order.id}_invoice.pdf',
-                              folder: 'hashzone/invoices',
-                            ).timeout(const Duration(seconds: 30));
-                            final url = data['secure_url'] as String? ?? '';
-                            if (url.isEmpty) {
-                              throw Exception('Cloudinary secure_url is empty.');
-                            }
-                            // Verification Phase (Non-destructive check)
-                            try {
-                              final headRes = await http.head(Uri.parse(url)).timeout(const Duration(seconds: 5));
-                              if (headRes.statusCode != 200) {
-                                final cldError = headRes.headers['x-cld-error'] ?? '';
-                                if (cldError.isNotEmpty) {
-                                  debugPrint('Cloudinary HEAD header warning: $cldError');
-                                }
-                              }
-                            } catch (e) {
-                              debugPrint('Non-critical verification check skipped: $e');
-                            }
+                              orderId: order.id,
+                            );
+
                             await firestore.collection('orders').doc(order.id).update({
-                              'invoiceUrl': url,
-                              'invoice': {
-                                'available': true,
-                                'url': url,
-                                'publicId': data['public_id'] as String? ?? '',
-                                'resourceType': data['resource_type'] as String? ?? 'raw',
-                                'format': data['format'] as String? ?? 'pdf',
-                                'fileName': data['original_filename'] as String? ?? '',
-                                'uploadedAt': data['created_at'] as String? ?? '',
-                              }
+                              'invoiceUrl': metadata['objectKey'],
+                              'invoice': metadata,
                             });
+
                             setDialogState(() {
                               isUploading = false;
-                              currentInvoiceUrl = url;
+                              currentInvoiceUrl = metadata['objectKey'] as String;
                             });
+
                             if (dialogCtx.mounted) {
                               ScaffoldMessenger.of(dialogCtx).showSnackBar(
                                 SnackBar(
-                                  content: Text('Invoice uploaded successfully and is now available to the customer.', style: GoogleFonts.inter()),
+                                  content: Text('Invoice replaced successfully in Backblaze B2.', style: GoogleFonts.inter()),
                                   backgroundColor: const Color(0xFF2E7D32),
                                 ),
                               );
@@ -780,7 +765,7 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
                             setDialogState(() => isUploading = false);
                             if (dialogCtx.mounted) {
                               ScaffoldMessenger.of(dialogCtx).showSnackBar(SnackBar(
-                                content: Text('Invoice upload failed: $e', style: GoogleFonts.inter()),
+                                content: Text('Invoice replacement failed: $e', style: GoogleFonts.inter()),
                                 backgroundColor: Colors.red.shade700,
                                 duration: const Duration(seconds: 8),
                               ));
@@ -806,7 +791,7 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
                                 ),
                               ),
                               content: Text(
-                                'Are you sure you want to remove this invoice? The customer will no longer be able to access it.',
+                                'Are you sure you want to remove this invoice from Backblaze B2? The customer will no longer be able to access it.',
                                 style: GoogleFonts.inter(fontSize: 14, color: Colors.black87),
                               ),
                               actions: [
@@ -822,7 +807,13 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
                                   ),
                                   onPressed: () async {
                                     Navigator.pop(confirmCtx);
-                                    await firestore.collection('orders').doc(order.id).update({'invoiceUrl': FieldValue.delete()});
+                                    if (currentInvoiceUrl != null) {
+                                      await b2Service.deleteInvoice(currentInvoiceUrl!);
+                                    }
+                                    await firestore.collection('orders').doc(order.id).update({
+                                      'invoiceUrl': FieldValue.delete(),
+                                      'invoice': FieldValue.delete(),
+                                    });
                                     setDialogState(() => currentInvoiceUrl = null);
                                     if (context.mounted) {
                                       ScaffoldMessenger.of(context).showSnackBar(
@@ -859,56 +850,28 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
                                 }
                                 return;
                               }
-                              final name = f.name.toLowerCase();
-                              if (!name.endsWith('.pdf')) {
-                                if (dialogCtx.mounted) {
-                                  ScaffoldMessenger.of(dialogCtx).showSnackBar(const SnackBar(content: Text('Only PDF files are accepted.')));
-                                }
-                                return;
-                              }
                               setDialogState(() => isUploading = true);
                               try {
-                                final data = await CloudinaryService().uploadInvoice(
+                                final metadata = await b2Service.uploadInvoice(
                                   bytes: f.bytes!,
                                   filename: '${order.id}_invoice.pdf',
-                                  folder: 'hashzone/invoices',
-                                ).timeout(const Duration(seconds: 30));
-                                final url = data['secure_url'] as String? ?? '';
-                                if (url.isEmpty) {
-                                  throw Exception('Cloudinary secure_url is empty.');
-                                }
-                                // Verification Phase (Non-destructive check)
-                                try {
-                                  final headRes = await http.head(Uri.parse(url)).timeout(const Duration(seconds: 5));
-                                  if (headRes.statusCode != 200) {
-                                    final cldError = headRes.headers['x-cld-error'] ?? '';
-                                    if (cldError.isNotEmpty) {
-                                      debugPrint('Cloudinary HEAD header warning: $cldError');
-                                    }
-                                  }
-                                } catch (e) {
-                                  debugPrint('Non-critical verification check skipped: $e');
-                                }
+                                  orderId: order.id,
+                                );
+
                                 await firestore.collection('orders').doc(order.id).update({
-                                  'invoiceUrl': url,
-                                  'invoice': {
-                                    'available': true,
-                                    'url': url,
-                                    'publicId': data['public_id'] as String? ?? '',
-                                    'resourceType': data['resource_type'] as String? ?? 'raw',
-                                    'format': data['format'] as String? ?? 'pdf',
-                                    'fileName': data['original_filename'] as String? ?? '',
-                                    'uploadedAt': data['created_at'] as String? ?? '',
-                                  }
+                                  'invoiceUrl': metadata['objectKey'],
+                                  'invoice': metadata,
                                 });
+
                                 setDialogState(() {
                                   isUploading = false;
-                                  currentInvoiceUrl = url;
+                                  currentInvoiceUrl = metadata['objectKey'] as String;
                                 });
+
                                 if (dialogCtx.mounted) {
                                   ScaffoldMessenger.of(dialogCtx).showSnackBar(
                                     SnackBar(
-                                      content: Text('Invoice uploaded successfully and is now available to the customer.', style: GoogleFonts.inter()),
+                                      content: Text('Invoice uploaded successfully to Backblaze B2 and is now available to the customer.', style: GoogleFonts.inter()),
                                       backgroundColor: const Color(0xFF2E7D32),
                                     ),
                                   );
@@ -919,7 +882,7 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
                                   ScaffoldMessenger.of(dialogCtx).showSnackBar(SnackBar(
                                     content: Text('Invoice upload failed: $e', style: GoogleFonts.inter()),
                                     backgroundColor: Colors.red.shade700,
-                                    duration: const Duration(seconds: 6),
+                                    duration: const Duration(seconds: 8),
                                   ));
                                 }
                               }
@@ -927,7 +890,7 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
                     icon: isUploading
                         ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation(Colors.white)))
                         : const Icon(Icons.upload_file, size: 18),
-                    label: Text(isUploading ? 'Uploading Invoice...' : 'Upload PDF Invoice', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+                    label: Text(isUploading ? 'Uploading to Backblaze B2...' : 'Upload PDF Invoice', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
                   ),
                 ],
               ],
