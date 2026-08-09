@@ -9,6 +9,8 @@ class CustomerAddress {
   final String road;
   final String area;
   final String city;
+  final String state;
+  final String pincode;
   final String landmark;
 
   const CustomerAddress({
@@ -16,14 +18,32 @@ class CustomerAddress {
     this.road = '',
     this.area = '',
     this.city = '',
+    this.state = '',
+    this.pincode = '',
     this.landmark = '',
   });
+
+  String get fullAddress {
+    final parts = [
+      if (doorNumber.trim().isNotEmpty) doorNumber,
+      if (road.trim().isNotEmpty) road,
+      if (area.trim().isNotEmpty) area,
+      if (city.trim().isNotEmpty) city,
+      if (state.trim().isNotEmpty) state,
+      if (pincode.trim().isNotEmpty) pincode,
+      if (landmark.trim().isNotEmpty) 'Near $landmark',
+    ];
+    if (parts.isEmpty) return 'No address provided.';
+    return parts.join(', ');
+  }
 
   Map<String, dynamic> toMap() => {
         'doorNumber': doorNumber,
         'road': road,
         'area': area,
         'city': city,
+        'state': state,
+        'pincode': pincode,
         'landmark': landmark,
       };
 
@@ -34,6 +54,8 @@ class CustomerAddress {
       road: map['road'] as String? ?? '',
       area: map['area'] as String? ?? '',
       city: map['city'] as String? ?? '',
+      state: map['state'] as String? ?? '',
+      pincode: map['pincode'] as String? ?? '',
       landmark: map['landmark'] as String? ?? '',
     );
   }

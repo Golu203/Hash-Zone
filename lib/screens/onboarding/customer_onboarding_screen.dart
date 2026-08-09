@@ -155,6 +155,8 @@ class _CustomerOnboardingScreenState extends State<CustomerOnboardingScreen>
           road: fullAddress.road,
           area: fullAddress.area,
           city: fullAddress.city,
+          state: fullAddress.state,
+          pincode: fullAddress.pincode,
           landmark: fullAddress.landmark,
         ),
       );

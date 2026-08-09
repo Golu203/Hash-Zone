@@ -224,6 +224,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         road: defaultAddr?.road ?? '',
         area: defaultAddr?.area ?? '',
         city: defaultAddr?.city ?? '',
+        state: defaultAddr?.state ?? '',
+        pincode: defaultAddr?.pincode ?? '',
         landmark: defaultAddr?.landmark ?? '',
       );
 
@@ -305,7 +307,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           utrNumber: utr,
           cloudinaryUrl: uploadedUrl,
           customerNote: _noteCtrl.text.trim(),
-          shippingAddress: defaultAddr?.summary ?? '',
+          shippingAddress: orderShippingAddr.fullAddress,
           orderStatus: 'Order Received',
           paymentStatus: 'Submitted',
           submittedTime: now,

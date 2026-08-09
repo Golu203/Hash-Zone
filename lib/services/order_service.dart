@@ -81,6 +81,10 @@ class OrderService {
         .orderBy('orderDate', descending: true)
         .limit(limit)
         .snapshots()
+        .handleError((err) {
+          debugPrint('[OrderService] streamAdminOrders error: $err');
+          return;
+        })
         .map((snap) => snap.docs
             .map((doc) => CustomerOrder.fromMap(doc.data(), doc.id))
             .toList());

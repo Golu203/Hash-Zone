@@ -45,10 +45,14 @@ final appRouter = GoRouter(
   redirect: (context, state) {
     final location = state.uri.toString();
 
-    // ── Admin Auth Guard (unchanged) ─────────────────────────────────────────
+    // ── Admin Auth Guard ─────────────────────────────────────────────────────
     final isGoingToAdmin = location.startsWith('/admin');
     final isGoingToAdminLogin = location == '/admin/login';
-    final isAdminAuthenticated = AuthService().isAuthenticated;
+    final adminService = AuthService();
+    final adminUser = adminService.currentUser;
+    // Admin must be authenticated AND have an @hashzone.com email
+    final isAdminAuthenticated = adminUser != null &&
+        (adminUser.email?.endsWith('@hashzone.com') ?? false);
 
     if (isGoingToAdmin && !isGoingToAdminLogin && !isAdminAuthenticated) {
       return '/admin/login';

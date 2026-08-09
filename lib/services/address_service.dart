@@ -104,13 +104,14 @@ class CustomerAddress2 {
   /// Returns a formatted summary line for display.
   String get summary {
     final parts = [
-      if (name.isNotEmpty) name,
-      if (doorNumber.isNotEmpty) doorNumber,
-      if (road.isNotEmpty) road,
-      if (area.isNotEmpty) area,
-      if (city.isNotEmpty) city,
-      if (state.isNotEmpty) state,
-      if (pincode.isNotEmpty) pincode,
+      if (name.trim().isNotEmpty) name,
+      if (doorNumber.trim().isNotEmpty) doorNumber,
+      if (road.trim().isNotEmpty) road,
+      if (area.trim().isNotEmpty) area,
+      if (city.trim().isNotEmpty) city,
+      if (state.trim().isNotEmpty) state,
+      if (pincode.trim().isNotEmpty) pincode,
+      if (landmark.trim().isNotEmpty) 'Near ${landmark.trim()}',
     ];
     return parts.join(', ');
   }
