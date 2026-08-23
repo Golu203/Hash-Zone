@@ -12,6 +12,7 @@ class UnifiedAddressForm extends StatefulWidget {
   final Function(CustomerAddress2 address) onSave;
   final String submitButtonText;
   final bool isSaving;
+  final Widget? beforeSubmitWidget;
 
   const UnifiedAddressForm({
     super.key,
@@ -22,6 +23,7 @@ class UnifiedAddressForm extends StatefulWidget {
     required this.onSave,
     this.submitButtonText = 'Save Address',
     this.isSaving = false,
+    this.beforeSubmitWidget,
   });
 
   @override
@@ -344,6 +346,10 @@ class _UnifiedAddressFormState extends State<UnifiedAddressForm> {
             controlAffinity: ListTileControlAffinity.leading,
             title: Text('Set as Default Address', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600)),
           ),
+          if (widget.beforeSubmitWidget != null) ...[
+            const SizedBox(height: 16),
+            widget.beforeSubmitWidget!,
+          ],
           const SizedBox(height: 20),
 
           // Submit Button

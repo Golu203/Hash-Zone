@@ -11,9 +11,7 @@ import '../../services/order_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/order_lock_service.dart';
 import '../../services/receipt_generator_service.dart';
-import 'package:http/http.dart' as http;
 import '../../widgets/whatsapp_message_centre_dialog.dart';
-import '../../services/cloudinary_service.dart';
 import '../../services/b2_invoice_service.dart';
 
 
@@ -1363,6 +1361,20 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
         Text(order.customerName, style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87)),
         if (order.companyName.isNotEmpty) Text('Company: ${order.companyName}', style: GoogleFonts.inter(fontSize: 12, color: Colors.black54)),
         Text('Phone: ${order.phoneNumber}', style: GoogleFonts.inter(fontSize: 12, color: Colors.black54)),
+        if (order.businessIdType != null && order.businessIdType!.isNotEmpty && order.businessIdValue != null && order.businessIdValue!.isNotEmpty)
+          Container(
+            margin: const EdgeInsets.only(top: 4, bottom: 2),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF0F4F8),
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(color: const Color(0xFFD0DCE5)),
+            ),
+            child: Text(
+              '${order.businessIdType}: ${order.businessIdValue}',
+              style: GoogleFonts.inter(fontSize: 11.5, fontWeight: FontWeight.bold, color: const Color(0xFF1E3A8A)),
+            ),
+          ),
         if (order.whatsAppNumber.isNotEmpty) Text('WhatsApp: ${order.whatsAppNumber}', style: GoogleFonts.inter(fontSize: 12, color: Colors.black54)),
         if (order.email.isNotEmpty) Text('Email: ${order.email}', style: GoogleFonts.inter(fontSize: 12, color: Colors.black54)),
         const SizedBox(height: 10),
@@ -1456,21 +1468,67 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
                 ],
               ),
               const SizedBox(height: 6),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text('Size:', style: GoogleFonts.inter(fontSize: 12, color: Colors.black45)),
-                  Text(item.size, style: GoogleFonts.inter(fontSize: 12, color: Colors.black87)),
-                ],
-              ),
-              const SizedBox(height: 6),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text('Qty:', style: GoogleFonts.inter(fontSize: 12, color: Colors.black45)),
-                  Text('${item.quantity}', style: GoogleFonts.inter(fontSize: 12, color: Colors.black87)),
-                ],
-              ),
+              if (item.isBundleOrder) ...[
+                // Bundle order display
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Bundle:', style: GoogleFonts.inter(fontSize: 12, color: Colors.black45)),
+                    Flexible(
+                      child: Text(item.bundleName ?? '—',
+                          style: GoogleFonts.inter(fontSize: 12, color: Colors.black87, fontWeight: FontWeight.w600),
+                          textAlign: TextAlign.right),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Sizes:', style: GoogleFonts.inter(fontSize: 12, color: Colors.black45)),
+                    Flexible(
+                      child: Text(item.bundleSizes?.join(', ') ?? '—',
+                          style: GoogleFonts.inter(fontSize: 12, color: Colors.black87),
+                          textAlign: TextAlign.right),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Bundles:', style: GoogleFonts.inter(fontSize: 12, color: Colors.black45)),
+                    Text('${item.bundleQuantity ?? item.quantity}',
+                        style: GoogleFonts.inter(fontSize: 12, color: Colors.black87)),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Total Pcs:', style: GoogleFonts.inter(fontSize: 12, color: Colors.black45)),
+                    Text('${item.totalPieces ?? ((item.totalPiecesPerBundle ?? 0) * (item.bundleQuantity ?? item.quantity))} pcs',
+                        style: GoogleFonts.inter(fontSize: 12, color: Colors.black87, fontWeight: FontWeight.w600)),
+                  ],
+                ),
+              ] else ...[
+                // Legacy size/qty display
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Size:', style: GoogleFonts.inter(fontSize: 12, color: Colors.black45)),
+                    Text(item.size, style: GoogleFonts.inter(fontSize: 12, color: Colors.black87)),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Qty:', style: GoogleFonts.inter(fontSize: 12, color: Colors.black45)),
+                    Text('${item.quantity}', style: GoogleFonts.inter(fontSize: 12, color: Colors.black87)),
+                  ],
+                ),
+              ],
               const SizedBox(height: 6),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1516,8 +1574,8 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
               _th('Image'),
               _th('Product Name'),
               _th('SKU / Code'),
-              _th('Size'),
-              _th('Qty'),
+              _th('Bundle / Size'),
+              _th('Qty / Bundles'),
               _th('Total'),
             ],
           ),
@@ -1533,8 +1591,14 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
                   ),
                   _td(item.title, isBold: true),
                   _td('${item.sku}\n${item.internalProductCode}'),
-                  _td(item.size),
-                  _td('${item.quantity}'),
+                  // Bundle / size column
+                  item.isBundleOrder
+                      ? _td('${item.bundleName ?? ""}\n${item.bundleSizes?.join(", ") ?? ""}')
+                      : _td(item.size),
+                  // Qty / bundles column
+                  item.isBundleOrder
+                      ? _td('${item.bundleQuantity ?? item.quantity} bundles\n${item.totalPieces ?? 0} pcs')
+                      : _td('${item.quantity}'),
                   _td('₹${item.lineTotal.toStringAsFixed(0)}', isBold: true),
                 ],
               )),

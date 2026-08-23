@@ -29,6 +29,11 @@ class CheckoutItem {
   final double price;
   final int quantity;
   final String sku;
+  // Bundle fields (null for legacy items)
+  final String? bundleName;
+  final List<String>? bundleSizes;
+  final int? totalPiecesPerBundle;
+  final int? piecesPerSize;
 
   const CheckoutItem({
     required this.productId,
@@ -38,8 +43,14 @@ class CheckoutItem {
     required this.price,
     required this.quantity,
     required this.sku,
+    this.bundleName,
+    this.bundleSizes,
+    this.totalPiecesPerBundle,
+    this.piecesPerSize,
   });
 
+  bool get isBundleItem => bundleName != null && bundleName!.isNotEmpty;
+  int get totalPieces => isBundleItem ? (totalPiecesPerBundle ?? 0) * quantity : quantity;
   double get lineTotal => price * quantity;
 }
 
@@ -82,6 +93,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       price: i.price,
       quantity: i.quantity,
       sku: i.sku,
+      bundleName: i.bundleName,
+      bundleSizes: i.bundleSizes,
+      totalPiecesPerBundle: i.totalPiecesPerBundle,
+      piecesPerSize: i.piecesPerSize,
     )).toList();
   }
 
@@ -216,6 +231,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           ? auth.profile!.phoneNumber
           : (defaultAddr?.phone ?? '');
       final String customerEmail = auth.profile?.email ?? auth.firebaseUser?.email ?? '';
+      final String businessIdType = auth.profile?.businessIdType ?? '';
+      final String businessIdValue = auth.profile?.businessIdValue ?? '';
 
       debugPrint('[Checkout] Creating order $orderId for customer $customerId ($customerName)');
 
@@ -235,10 +252,18 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         title: item.title,
         imageUrl: item.imageUrl,
         sku: item.sku,
-        size: item.size,
+        size: item.isBundleItem ? (item.bundleName ?? 'Bundle') : item.size,
         quantity: item.quantity,
         unitPrice: item.price,
         lineTotal: item.lineTotal,
+        // Bundle fields (only for new bundle orders)
+        bundleName: item.bundleName,
+        bundleSizes: item.bundleSizes,
+        totalPiecesPerBundle: item.totalPiecesPerBundle,
+        piecesPerSize: item.piecesPerSize,
+        bundleQuantity: item.isBundleItem ? item.quantity : null,
+        bundlePrice: item.isBundleItem ? item.price : null,
+        totalPieces: item.isBundleItem ? item.totalPieces : null,
       )).toList();
 
       final now = DateTime.now();
@@ -247,9 +272,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         id: orderId,
         customerId: customerId,
         customerName: customerName,
+        companyName: auth.profile?.companyName ?? '',
         phoneNumber: customerPhone,
-        whatsAppNumber: customerPhone,
+        whatsAppNumber: auth.profile?.whatsAppNumber.isNotEmpty == true ? auth.profile!.whatsAppNumber : customerPhone,
         email: customerEmail,
+        businessIdType: businessIdType.isNotEmpty ? businessIdType : null,
+        businessIdValue: businessIdValue.isNotEmpty ? businessIdValue : null,
         orderDate: now,
         status: 'Order Received',
         shippingAddress: orderShippingAddr,

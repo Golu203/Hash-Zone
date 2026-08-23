@@ -281,6 +281,14 @@ class CustomerOrderDetailsScreen extends StatelessWidget {
                                           Text('Shipping Address', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.black54)),
                                           const SizedBox(height: 8),
                                           Text(order.shippingAddress.formattedMultiLine, style: GoogleFonts.inter(fontSize: 13, height: 1.5)),
+                                          if (order.phoneNumber.isNotEmpty || (order.businessIdType?.isNotEmpty == true && order.businessIdValue?.isNotEmpty == true)) ...[
+                                            const SizedBox(height: 8),
+                                            const Divider(height: 16, color: Color(0xFFEEEEEE)),
+                                            if (order.phoneNumber.isNotEmpty)
+                                              Text('Contact: ${order.phoneNumber}', style: GoogleFonts.inter(fontSize: 12, color: Colors.black87)),
+                                            if (order.businessIdType?.isNotEmpty == true && order.businessIdValue?.isNotEmpty == true)
+                                              Text('${order.businessIdType}: ${order.businessIdValue}', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: const Color(0xFF1E3A8A))),
+                                          ],
                                         ],
                                       ),
                                     ),
@@ -314,6 +322,14 @@ class CustomerOrderDetailsScreen extends StatelessWidget {
                                             Text('Shipping Address', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.black54)),
                                             const SizedBox(height: 8),
                                             Text(order.shippingAddress.formattedMultiLine, style: GoogleFonts.inter(fontSize: 13, height: 1.5)),
+                                            if (order.phoneNumber.isNotEmpty || (order.businessIdType?.isNotEmpty == true && order.businessIdValue?.isNotEmpty == true)) ...[
+                                              const SizedBox(height: 8),
+                                              const Divider(height: 16, color: Color(0xFFEEEEEE)),
+                                              if (order.phoneNumber.isNotEmpty)
+                                                Text('Contact: ${order.phoneNumber}', style: GoogleFonts.inter(fontSize: 12, color: Colors.black87)),
+                                              if (order.businessIdType?.isNotEmpty == true && order.businessIdValue?.isNotEmpty == true)
+                                                Text('${order.businessIdType}: ${order.businessIdValue}', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: const Color(0xFF1E3A8A))),
+                                            ],
                                           ],
                                         ),
                                       ),

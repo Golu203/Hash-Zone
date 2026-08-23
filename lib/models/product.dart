@@ -1,6 +1,55 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'cloudinary_image.dart';
 
+/// Bundle configuration applied to a product.
+/// One product = one bundle price + one bundle definition.
+class ProductBundle {
+  final String optionId; // FK to bundleOptions collection
+  final String bundleName; // e.g. "S-M-L-XL Assorted Bundle"
+  final List<String> sizes; // e.g. ["S","M","L","XL"]
+  final int totalPieces; // e.g. 100
+  final int piecesPerSize; // e.g. 25
+  final double bundlePrice; // price for 1 bundle unit
+
+  const ProductBundle({
+    required this.optionId,
+    required this.bundleName,
+    required this.sizes,
+    required this.totalPieces,
+    required this.piecesPerSize,
+    required this.bundlePrice,
+  });
+
+  String get priceLabel => bundlePrice > 0 ? '₹${bundlePrice.toStringAsFixed(0)}' : 'Inquiry';
+
+  String get sizesBreakdown {
+    if (sizes.isEmpty) return '—';
+    return sizes.map((s) => '$s×$piecesPerSize').join(', ');
+  }
+
+  String get sizeLabel => sizes.isEmpty ? '—' : sizes.join(', ');
+
+  Map<String, dynamic> toMap() => {
+        'optionId': optionId,
+        'bundleName': bundleName,
+        'sizes': sizes,
+        'totalPieces': totalPieces,
+        'piecesPerSize': piecesPerSize,
+        'bundlePrice': bundlePrice,
+      };
+
+  factory ProductBundle.fromMap(Map<String, dynamic> map) {
+    return ProductBundle(
+      optionId: map['optionId'] as String? ?? '',
+      bundleName: map['bundleName'] as String? ?? '',
+      sizes: List<String>.from(map['sizes'] as List? ?? []),
+      totalPieces: (map['totalPieces'] as num?)?.toInt() ?? 0,
+      piecesPerSize: (map['piecesPerSize'] as num?)?.toInt() ?? 0,
+      bundlePrice: (map['bundlePrice'] as num?)?.toDouble() ?? 0.0,
+    );
+  }
+}
+
 class Product {
   final String id;
   final String title;
@@ -8,6 +57,7 @@ class Product {
   final String departmentId;
   final String categoryId;
   final String subcategoryId;
+  // Legacy price field (kept for backward compat with old products)
   final String price;
   final double? offerPrice;
   final List<CloudinaryImage> images;
@@ -16,10 +66,13 @@ class Product {
   final bool isFeatured;
   final bool isOffer;
   final List<String> tags;
+  // Legacy size/price fields (kept for backward compat)
   final List<String> availableSizes;
   final Map<String, String> sizePrices;
   final String uniqueProductCode;
   final DateTime createdAt;
+  // NEW: bundle pricing configuration (null = not yet configured)
+  final ProductBundle? bundle;
 
   Product({
     required this.id,
@@ -40,7 +93,18 @@ class Product {
     this.sizePrices = const {},
     this.uniqueProductCode = '',
     DateTime? createdAt,
+    this.bundle,
   }) : createdAt = createdAt ?? DateTime.now();
+
+  /// Whether this product has a bundle configured
+  bool get hasBundle => bundle != null && bundle!.bundleName.isNotEmpty;
+
+  /// Display price for this product (bundle price takes priority)
+  String get displayPrice {
+    if (hasBundle) return bundle!.priceLabel;
+    if (price.trim().isNotEmpty) return price;
+    return 'Inquiry';
+  }
 
   CloudinaryImage? get coverImage {
     if (images.isEmpty) return null;
@@ -107,6 +171,7 @@ class Product {
     Map<String, String>? sizePrices,
     DateTime? createdAt,
     String? uniqueProductCode,
+    ProductBundle? bundle,
   }) {
     return Product(
       id: id ?? this.id,
@@ -127,6 +192,7 @@ class Product {
       sizePrices: sizePrices ?? this.sizePrices,
       createdAt: createdAt ?? this.createdAt,
       uniqueProductCode: uniqueProductCode ?? this.uniqueProductCode,
+      bundle: bundle ?? this.bundle,
     );
   }
 
@@ -217,6 +283,17 @@ class Product {
       return {};
     }
 
+    ProductBundle? parseBundle(dynamic val) {
+      if (val is Map) {
+        try {
+          return ProductBundle.fromMap(Map<String, dynamic>.from(val));
+        } catch (_) {
+          return null;
+        }
+      }
+      return null;
+    }
+
     return Product(
       id: id,
       title: map['title'] ?? '',
@@ -236,6 +313,7 @@ class Product {
       sizePrices: parseSizePrices(map['sizePrices']),
       uniqueProductCode: map['uniqueProductCode'] ?? '',
       createdAt: parseDate(map['createdAt']),
+      bundle: parseBundle(map['bundle']),
     );
   }
 
@@ -258,6 +336,7 @@ class Product {
       'sizePrices': sizePrices,
       'uniqueProductCode': uniqueProductCode,
       'createdAt': Timestamp.fromDate(createdAt),
+      'bundle': bundle?.toMap(),
     };
   }
 }

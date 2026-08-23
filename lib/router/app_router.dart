@@ -17,6 +17,7 @@ import '../screens/admin/admin_payment_verification_screen.dart';
 import '../screens/admin/admin_developer_testing_screen.dart';
 import '../screens/admin/admin_orders_screen.dart';
 import '../screens/admin/admin_backup_recovery_screen.dart';
+import '../screens/admin/admin_bundle_options_screen.dart';
 import '../screens/customer/customer_orders_screen.dart';
 import '../screens/customer/customer_order_details_screen.dart';
 import '../screens/support_screen.dart';
@@ -25,6 +26,11 @@ import '../screens/home_screen.dart';
 import '../screens/product_detail_screen.dart';
 import '../screens/products_screen.dart';
 import '../screens/error_screen.dart';
+import '../screens/legal/terms_conditions_screen.dart';
+import '../screens/legal/privacy_policy_screen.dart';
+import '../screens/legal/refund_policy_screen.dart';
+import '../screens/legal/shipping_policy_screen.dart';
+import '../screens/legal/grievance_redressal_screen.dart';
 import '../services/auth_service.dart';
 import '../providers/business_provider.dart';
 import '../providers/customer_auth_provider.dart';
@@ -55,7 +61,6 @@ final appRouter = GoRouter(
         ((adminUser.email?.endsWith('@hashzone.com') ?? false) ||
          (adminUser.email?.endsWith('@hashzone.co.in') ?? false));
 
-
     if (isGoingToAdmin && !isGoingToAdminLogin && !isAdminAuthenticated) {
       return '/admin/login';
     }
@@ -67,30 +72,34 @@ final appRouter = GoRouter(
     final customerAuth = Provider.of<CustomerAuthProvider>(context, listen: false);
     final isCustomerLoading = customerAuth.isLoading;
 
-    // Let auth pages and public pages pass through freely
+    // Let auth pages, legal policies, and public informational pages pass through freely
     final isAuthRoute = location.startsWith('/login') ||
         location.startsWith('/signup') ||
         location.startsWith('/forgot-password') ||
         location.startsWith('/onboarding') ||
         isGoingToAdmin;
 
-    if (isAuthRoute) return null;
+    final isLegalRoute = location.startsWith('/terms') ||
+        location.startsWith('/privacy') ||
+        location.startsWith('/refund-policy') ||
+        location.startsWith('/shipping-policy') ||
+        location.startsWith('/grievance') ||
+        location.startsWith('/about') ||
+        location.startsWith('/contact') ||
+        location.startsWith('/support') ||
+        location.startsWith('/faq');
+
+    if (isAuthRoute || isLegalRoute) return null;
 
     // Protected customer routes
-    final protectedRoutes = ['/profile', '/orders', '/dashboard', '/addresses', '/checkout', '/cart'];
+    final protectedRoutes = ['/profile', '/orders', '/dashboard', '/addresses', '/checkout'];
     final isProtected = protectedRoutes.any((r) => location.startsWith(r));
 
     if (isProtected && !isCustomerLoading && !customerAuth.isAuthenticated) {
+      if (customerAuth.needsOnboarding) {
+        return '/onboarding?redirect=${Uri.encodeComponent(location)}';
+      }
       return '/login?redirect=${Uri.encodeComponent(location)}';
-    }
-
-    // After authenticated: if onboarding incomplete, redirect to onboarding
-    // (except when already going there or to an auth screen)
-    if (!isAuthRoute &&
-        !isCustomerLoading &&
-        customerAuth.isAuthenticated &&
-        customerAuth.needsOnboarding) {
-      return '/onboarding?redirect=${Uri.encodeComponent(location)}';
     }
 
     return null;
@@ -121,12 +130,37 @@ final appRouter = GoRouter(
       builder: (context, state) => const ContactScreen(),
     ),
     GoRoute(
+      path: '/support',
+      builder: (context, state) => const SupportScreen(),
+    ),
+    GoRoute(
+      path: '/faq',
+      builder: (context, state) => const SupportScreen(),
+    ),
+    GoRoute(
+      path: '/terms',
+      builder: (context, state) => const TermsConditionsScreen(),
+    ),
+    GoRoute(
+      path: '/privacy',
+      builder: (context, state) => const PrivacyPolicyScreen(),
+    ),
+    GoRoute(
+      path: '/refund-policy',
+      builder: (context, state) => const RefundPolicyScreen(),
+    ),
+    GoRoute(
+      path: '/shipping-policy',
+      builder: (context, state) => const ShippingPolicyScreen(),
+    ),
+    GoRoute(
+      path: '/grievance',
+      builder: (context, state) => const GrievanceRedressalScreen(),
+    ),
+    GoRoute(
       path: '/cart',
       builder: (context, state) {
         final business = Provider.of<BusinessProvider>(context);
-        // ── Wait for Firestore before making the cart enable/disable decision.
-        // Without this guard, the default enableShoppingCart = false kicks in on
-        // page refresh and silently redirects to HomeScreen while the URL stays /cart.
         if (business.isLoading) {
           return const Scaffold(
             backgroundColor: Colors.white,
@@ -151,14 +185,6 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/install',
       builder: (context, state) => const InstallScreen(),
-    ),
-    GoRoute(
-      path: '/support',
-      builder: (context, state) => const SupportScreen(),
-    ),
-    GoRoute(
-      path: '/contact',
-      builder: (context, state) => const SupportScreen(),
     ),
 
     // ── Customer Auth Routes ───────────────────────────────────────────────────
@@ -289,6 +315,10 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/admin/backup-recovery',
       builder: (context, state) => const AdminBackupRecoveryScreen(),
+    ),
+    GoRoute(
+      path: '/admin/bundle-options',
+      builder: (context, state) => const AdminBundleOptionsScreen(),
     ),
   ],
 );

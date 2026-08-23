@@ -34,17 +34,45 @@ class ReceiptGeneratorService {
 
     final itemsRows = order.items.map((item) {
       final skuCode = item.sku.isNotEmpty ? item.sku : '—';
-      return '''
-      <tr>
-        <td style="padding: 8px; border-bottom: 1px solid #eee;">${item.title}</td>
-        <td style="padding: 8px; border-bottom: 1px solid #eee;">$skuCode</td>
-        <td style="padding: 8px; border-bottom: 1px solid #eee;">${item.size}</td>
-        <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: center;">${item.quantity}</td>
-        <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: right;">₹${item.unitPrice.toStringAsFixed(0)}</td>
-        <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: right; font-weight: bold;">₹${item.lineTotal.toStringAsFixed(0)}</td>
-      </tr>
-      ''';
+      if (item.isBundleOrder) {
+        // Bundle order row
+        final sizesStr = item.bundleSizes?.join(', ') ?? item.bundleName ?? '—';
+        final pcsPerBundle = item.totalPiecesPerBundle ?? 0;
+        final bundleQty = item.bundleQuantity ?? item.quantity;
+        final totalPcs = item.totalPieces ?? (pcsPerBundle * bundleQty);
+        return '''
+        <tr>
+          <td style="padding: 8px; border-bottom: 1px solid #eee;">${item.title}</td>
+          <td style="padding: 8px; border-bottom: 1px solid #eee;">$skuCode</td>
+          <td style="padding: 8px; border-bottom: 1px solid #eee;">
+            <strong>${item.bundleName}</strong><br/>
+            <small>Sizes: $sizesStr</small><br/>
+            <small>$pcsPerBundle pcs/bundle</small>
+          </td>
+          <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: center;">$bundleQty bundles<br/><small>($totalPcs pcs)</small></td>
+          <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: right;">₹${item.unitPrice.toStringAsFixed(0)}/bundle</td>
+          <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: right; font-weight: bold;">₹${item.lineTotal.toStringAsFixed(0)}</td>
+        </tr>
+        ''';
+      } else {
+        // Legacy size/quantity row
+        return '''
+        <tr>
+          <td style="padding: 8px; border-bottom: 1px solid #eee;">${item.title}</td>
+          <td style="padding: 8px; border-bottom: 1px solid #eee;">$skuCode</td>
+          <td style="padding: 8px; border-bottom: 1px solid #eee;">${item.size}</td>
+          <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: center;">${item.quantity}</td>
+          <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: right;">₹${item.unitPrice.toStringAsFixed(0)}</td>
+          <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: right; font-weight: bold;">₹${item.lineTotal.toStringAsFixed(0)}</td>
+        </tr>
+        ''';
+      }
     }).join('');
+
+    final hasBundleItems = order.items.any((i) => i.isBundleOrder);
+    final bundleSizeColHeader = hasBundleItems ? 'Bundle / Size' : 'Size';
+    final qtyColHeader = hasBundleItems ? 'Qty / Bundles' : 'Qty';
+    final unitColHeader = hasBundleItems ? 'Unit / Bundle Price' : 'Unit Price';
 
     return '''
     <!DOCTYPE html>
@@ -86,6 +114,8 @@ class ReceiptGeneratorService {
           <div><strong>Name:</strong> ${order.customerName}</div>
           ${order.companyName.isNotEmpty ? "<div><strong>Company:</strong> ${order.companyName}</div>" : ""}
           <div><strong>Phone:</strong> ${order.phoneNumber}</div>
+          ${order.businessIdType == 'GST' && (order.businessIdValue?.isNotEmpty == true) ? "<div><strong>GST Number:</strong> ${order.businessIdValue}</div>" : ""}
+          ${order.businessIdType == 'PAN' && (order.businessIdValue?.isNotEmpty == true) ? "<div><strong>PAN Number:</strong> ${order.businessIdValue}</div>" : ""}
           ${order.email.isNotEmpty ? "<div><strong>Email:</strong> ${order.email}</div>" : ""}
         </div>
         <div style="width: 48%;">
@@ -100,9 +130,9 @@ class ReceiptGeneratorService {
           <tr>
             <th>Product Name</th>
             <th>SKU</th>
-            <th>Size</th>
-            <th style="text-align: center;">Qty</th>
-            <th style="text-align: right;">Unit Price</th>
+            <th>$bundleSizeColHeader</th>
+            <th style="text-align: center;">$qtyColHeader</th>
+            <th style="text-align: right;">$unitColHeader</th>
             <th style="text-align: right;">Line Total</th>
           </tr>
         </thead>

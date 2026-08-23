@@ -31,9 +31,21 @@ class CustomerAuthProvider extends ChangeNotifier {
   CustomerProfile? get profile => _profile;
   CustomerAuthStatus get status => _status;
   bool get isLoading => _status == CustomerAuthStatus.loading;
-  bool get isAuthenticated => _status == CustomerAuthStatus.authenticated;
+
+  /// True ONLY when Firebase session exists AND onboarding is fully complete.
+  /// A user who signed up but didn't finish onboarding is NOT authenticated.
+  bool get isAuthenticated =>
+      _status == CustomerAuthStatus.authenticated &&
+      _profile != null &&
+      _profile!.onboardingComplete;
+
+  /// True when Firebase has a session (regardless of onboarding).
+  /// Used internally by the onboarding screen to know a Firebase user exists.
+  bool get isFirebaseSignedIn => _firebaseUser != null;
+
+  /// True when signed in via Firebase but onboarding is not yet complete.
   bool get needsOnboarding =>
-      isAuthenticated && (_profile == null || !_profile!.onboardingComplete);
+      isFirebaseSignedIn && (_profile == null || !_profile!.onboardingComplete);
 
   /// Stream of uid (non-null) when signed in, null when signed out.
   /// Used by main.dart to wire CartProvider + AddressProvider.
@@ -60,6 +72,8 @@ class CustomerAuthProvider extends ChangeNotifier {
           return;
         }
         _profile = profile;
+        // Set status to authenticated regardless – isAuthenticated getter
+        // enforces onboardingComplete requirement on top of this.
         _status = CustomerAuthStatus.authenticated;
         notifyListeners();
       });
@@ -94,7 +108,11 @@ class CustomerAuthProvider extends ChangeNotifier {
     required String companyName,
     required String phoneNumber,
     required String whatsAppNumber,
+    required String businessIdType,
+    required String businessIdValue,
     required CustomerAddress address,
+    required bool termsAccepted,
+    required bool privacyAccepted,
   }) async {
     if (_firebaseUser == null) return;
     await _service.completeOnboarding(
@@ -103,7 +121,11 @@ class CustomerAuthProvider extends ChangeNotifier {
       companyName: companyName,
       phoneNumber: phoneNumber,
       whatsAppNumber: whatsAppNumber,
+      businessIdType: businessIdType,
+      businessIdValue: businessIdValue,
       address: address,
+      termsAccepted: termsAccepted,
+      privacyAccepted: privacyAccepted,
     );
     // Profile stream will automatically update notifying listeners.
   }

@@ -6,21 +6,17 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart' as provider;
 
+import '../../models/bundle_option.dart';
 import '../../models/cloudinary_image.dart';
 import '../../models/product.dart';
 import '../../providers/admin_provider.dart';
 import '../../providers/business_provider.dart';
 import '../../providers/catalog_provider.dart';
 import '../../repositories/image_upload_repository.dart';
+import '../../services/bundle_option_service.dart';
 import '../../widgets/upload_progress_widget.dart';
 import '../../widgets/image_cropper_modal.dart';
 
-class SizePriceRow {
-  String size;
-  final TextEditingController priceController;
-  SizePriceRow({required this.size, required String price})
-      : priceController = TextEditingController(text: price);
-}
 
 class AdminProductEditScreen extends ConsumerStatefulWidget {
   final String? productId;
@@ -41,6 +37,8 @@ class _AdminProductEditScreenState extends ConsumerState<AdminProductEditScreen>
   final TextEditingController _descriptionController = TextEditingController();
   final TextEditingController _tagsController = TextEditingController();
 
+  final TextEditingController _bundlePriceController = TextEditingController();
+
   String _selectedDeptId = '';
   String _selectedCatId = '';
   String _selectedSubCatId = '';
@@ -53,16 +51,48 @@ class _AdminProductEditScreenState extends ConsumerState<AdminProductEditScreen>
 
   bool _isSaving = false;
 
+  // Bundle state
+  List<BundleOption> _bundleOptions = [];
+  String? _selectedBundleOptionId;
+  bool _bundleOptionsLoading = true;
+
+  BundleOption? get _selectedBundle {
+    if (_selectedBundleOptionId == null) return null;
+    try {
+      return _bundleOptions.firstWhere((b) => b.id == _selectedBundleOptionId);
+    } catch (_) {
+      return null;
+    }
+  }
+
   @override
   void initState() {
     super.initState();
+    _loadBundleOptions();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadProductData();
     });
   }
 
+  Future<void> _loadBundleOptions() async {
+    try {
+      final svc = BundleOptionService();
+      await svc.seedDefaultsIfEmpty();
+      // Use fetchAll + client-side filter to avoid needing a Firestore composite index
+      final all = await svc.fetchAll();
+      final active = all.where((b) => b.active).toList();
+      if (mounted) {
+        setState(() {
+          _bundleOptions = active;
+          _bundleOptionsLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _bundleOptionsLoading = false);
+    }
+  }
+
   List<String> _selectedSizes = [];
-  final List<SizePriceRow> _sizePrices = [];
 
   void _loadProductData() {
     final uploadRepo = ref.read(imageUploadRepositoryProvider);
@@ -87,15 +117,13 @@ class _AdminProductEditScreenState extends ConsumerState<AdminProductEditScreen>
         _isOffer = p.isOffer;
         _specifications = Map<String, String>.from(p.specifications);
         _selectedSizes = List<String>.from(p.availableSizes);
-        _sizePrices.clear();
-        for (final size in p.availableSizes) {
-          final priceVal = p.sizePrices[size];
-          _sizePrices.add(
-            SizePriceRow(
-              size: size,
-              price: priceVal ?? '',
-            ),
-          );
+
+        // Load bundle config if present
+        if (p.bundle != null && p.bundle!.optionId.isNotEmpty) {
+          _selectedBundleOptionId = p.bundle!.optionId;
+          _bundlePriceController.text = p.bundle!.bundlePrice > 0
+              ? p.bundle!.bundlePrice.toStringAsFixed(0)
+              : '';
         }
 
         // Load existing images into upload repository
@@ -104,6 +132,7 @@ class _AdminProductEditScreenState extends ConsumerState<AdminProductEditScreen>
       } catch (_) {}
     }
   }
+
 
   @override
   void dispose() {
@@ -115,11 +144,10 @@ class _AdminProductEditScreenState extends ConsumerState<AdminProductEditScreen>
     _tagsController.dispose();
     _specKeyController.dispose();
     _specValController.dispose();
-    for (final row in _sizePrices) {
-      row.priceController.dispose();
-    }
+    _bundlePriceController.dispose();
     super.dispose();
   }
+
 
   Future<void> _pickAndUploadImages() async {
     final uploadRepo = ref.read(imageUploadRepositoryProvider);
@@ -237,16 +265,20 @@ class _AdminProductEditScreenState extends ConsumerState<AdminProductEditScreen>
         ? double.tryParse(_offerPriceController.text.trim())
         : null;
 
-    final List<String> availableSizes = [];
-    final Map<String, String> sizePrices = {};
-    for (final row in _sizePrices) {
-      if (row.size.isNotEmpty) {
-        availableSizes.add(row.size);
-        final priceText = row.priceController.text.trim();
-        if (priceText.isNotEmpty) {
-          sizePrices[row.size] = priceText;
-        }
-      }
+    // Build bundle config from selected option
+    ProductBundle? productBundle;
+    final selectedBundleOpt = _selectedBundle;
+    if (selectedBundleOpt != null) {
+      final bundlePriceText = _bundlePriceController.text.trim();
+      final bundlePrice = double.tryParse(bundlePriceText) ?? 0.0;
+      productBundle = ProductBundle(
+        optionId: selectedBundleOpt.id,
+        bundleName: selectedBundleOpt.name,
+        sizes: selectedBundleOpt.sizes,
+        totalPieces: selectedBundleOpt.totalPieces,
+        piecesPerSize: selectedBundleOpt.piecesPerSize,
+        bundlePrice: bundlePrice,
+      );
     }
 
     final product = Product(
@@ -264,8 +296,9 @@ class _AdminProductEditScreenState extends ConsumerState<AdminProductEditScreen>
       isFeatured: _isFeatured,
       isOffer: _isOffer,
       tags: tags,
-      availableSizes: availableSizes,
-      sizePrices: sizePrices,
+      availableSizes: _selectedSizes,
+      sizePrices: const {},
+      bundle: productBundle,
     );
 
     try {
@@ -648,199 +681,120 @@ class _AdminProductEditScreenState extends ConsumerState<AdminProductEditScreen>
 
               const SizedBox(height: 20),
 
-              // Dynamic Size Selection Section
-              Builder(
-                builder: (context) {
-                  final dept = catalog.getDepartmentById(_selectedDeptId);
-                  final isSizeEnabled = dept == null ? true : dept.isSizeApplicable;
-                  const presetSizes = [
-                    'XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL', 'Free Size',
-                    '16', '18', '20', '22', '24', '26', '28', '30', '32', '34', '36', '38', '40', '42', '44', '46',
-                    '48', '50', '52', '54', '56', '58', '60', '62', '64', '66'
-                  ];
-
-                  return Opacity(
-                    opacity: isSizeEnabled ? 1.0 : 0.35,
-                    child: AbsorbPointer(
-                      absorbing: !isSizeEnabled,
-                      child: Container(
-                        padding: const EdgeInsets.all(20),
-                        margin: const EdgeInsets.only(bottom: 20),
-                        decoration: BoxDecoration(
-                          color: isSizeEnabled ? Colors.white : const Color(0xFFEBEBEB),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: isSizeEnabled ? const Color(0xFF000000) : Colors.red[800]!,
-                            width: isSizeEnabled ? 1.5 : 2.0,
-                          ),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  'PRODUCT SIZE & CUSTOM PRICING',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                    letterSpacing: 1.2,
-                                    color: isSizeEnabled ? const Color(0xFF111111) : Colors.red[900],
-                                  ),
-                                ),
-                                if (!isSizeEnabled)
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: Colors.red[100],
-                                      borderRadius: BorderRadius.circular(6),
-                                      border: Border.all(color: Colors.red[700]!),
-                                    ),
-                                    child: Text(
-                                      'SIZES DISABLED',
-                                      style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.red[900]),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                            if (!isSizeEnabled) ...[
-                              const SizedBox(height: 12),
-                              Text(
-                                'Sizes are turned OFF for ${dept.name}. Toggle sizes ON in Taxonomies to enable size selection.',
-                                style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.red[900]),
-                              ),
-                            ] else ...[
-                              const SizedBox(height: 16),
-                              if (_sizePrices.isEmpty)
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(vertical: 12),
-                                  child: Text(
-                                    'No sizes added yet. Click "+ Add Size" below to add sizes and optional custom prices.',
-                                    style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF666666)),
-                                  ),
-                                )
-                              else
-                                ListView.separated(
-                                  shrinkWrap: true,
-                                  physics: const NeverScrollableScrollPhysics(),
-                                  itemCount: _sizePrices.length,
-                                  separatorBuilder: (context, index) => const SizedBox(height: 12),
-                                  itemBuilder: (context, index) {
-                                    final row = _sizePrices[index];
-                                    final currentSelected = _sizePrices.map((r) => r.size).where((s) => s.isNotEmpty).toList();
-
-                                    return Row(
-                                      children: [
-                                        // Searchable Size Dropdown
-                                        Expanded(
-                                          flex: 2,
-                                          child: Container(
-                                            decoration: BoxDecoration(
-                                              border: Border.all(color: const Color(0xFFCCCCCC)),
-                                              borderRadius: BorderRadius.circular(8),
-                                            ),
-                                            child: Autocomplete<String>(
-                                              optionsBuilder: (TextEditingValue textEditingValue) {
-                                                final filteredPreset = presetSizes.where((s) {
-                                                  return !currentSelected.contains(s) || s == row.size;
-                                                }).toList();
-
-                                                if (textEditingValue.text.isEmpty) {
-                                                  return filteredPreset;
-                                                }
-                                                return filteredPreset.where((String option) {
-                                                  return option.toLowerCase().contains(textEditingValue.text.toLowerCase());
-                                                });
-                                              },
-                                              onSelected: (String selection) {
-                                                setState(() {
-                                                  row.size = selection;
-                                                });
-                                              },
-                                              fieldViewBuilder: (context, textEditingController, focusNode, onFieldSubmitted) {
-                                                // Keep controller updated with initial value if any
-                                                if (textEditingController.text != row.size) {
-                                                  textEditingController.text = row.size;
-                                                }
-                                                return TextFormField(
-                                                  controller: textEditingController,
-                                                  focusNode: focusNode,
-                                                  style: GoogleFonts.inter(fontSize: 13, color: Colors.black),
-                                                  decoration: const InputDecoration(
-                                                    hintText: 'Select or Search Size',
-                                                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                                    border: InputBorder.none,
-                                                  ),
-                                                  onChanged: (val) {
-                                                    row.size = val.trim();
-                                                  },
-                                                );
-                                              },
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(width: 12),
-
-                                        // Optional Custom Price Input
-                                        Expanded(
-                                          flex: 2,
-                                          child: TextFormField(
-                                            controller: row.priceController,
-                                            keyboardType: TextInputType.text,
-                                            style: GoogleFonts.inter(fontSize: 13, color: Colors.black),
-                                            decoration: const InputDecoration(
-                                              hintText: 'e.g. ₹260 + GST / Inquiry',
-                                              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                              border: OutlineInputBorder(),
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(width: 8),
-
-                                        // Delete Button
-                                        IconButton(
-                                          icon: const Icon(Icons.delete_outline, color: Colors.red),
-                                          onPressed: () {
-                                            setState(() {
-                                              row.priceController.dispose();
-                                              _sizePrices.removeAt(index);
-                                            });
-                                          },
-                                        ),
-                                      ],
-                                    );
-                                  },
-                                ),
-                              const SizedBox(height: 16),
-                              SizedBox(
-                                width: double.infinity,
-                                child: OutlinedButton.icon(
-                                  onPressed: () {
-                                    setState(() {
-                                      _sizePrices.add(SizePriceRow(size: '', price: ''));
-                                    });
-                                  },
-                                  style: OutlinedButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(vertical: 12),
-                                    side: const BorderSide(color: Colors.black, width: 1.5),
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                  ),
-                                  icon: const Icon(Icons.add, color: Colors.black, size: 18),
-                                  label: Text(
-                                    'ADD SIZE',
-                                    style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: Colors.black, fontSize: 12),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
+              // Bundle Configuration Section
+              Container(
+                padding: const EdgeInsets.all(20),
+                margin: const EdgeInsets.only(bottom: 20),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFF000000), width: 1.5),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'BUNDLE CONFIGURATION',
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.2,
+                        color: const Color(0xFF111111),
                       ),
                     ),
-                  );
-                },
+                    const SizedBox(height: 4),
+                    Text(
+                      'Select a pre-configured bundle option and set the price per bundle.',
+                      style: GoogleFonts.inter(fontSize: 11, color: const Color(0xFF666666)),
+                    ),
+                    const SizedBox(height: 16),
+                    if (_bundleOptionsLoading)
+                      const Center(child: CircularProgressIndicator())
+                    else if (_bundleOptions.isEmpty)
+                      Text(
+                        'No bundle options available. Please create bundle options in Settings → Bundle Options first.',
+                        style: GoogleFonts.inter(fontSize: 12, color: Colors.red.shade700),
+                      )
+                    else ...[
+                      // Bundle Dropdown
+                      DropdownButtonFormField<String>(
+                        value: _selectedBundleOptionId,
+                        dropdownColor: Colors.white,
+                        style: GoogleFonts.inter(color: Colors.black, fontSize: 13),
+                        decoration: const InputDecoration(labelText: 'Bundle Option'),
+                        hint: Text('None (Legacy / No Bundle)', style: GoogleFonts.inter(color: Colors.black54)),
+                        items: [
+                          const DropdownMenuItem<String>(
+                            value: null,
+                            child: Text('None (Legacy / No Bundle)'),
+                          ),
+                          ..._bundleOptions.map((opt) {
+                            return DropdownMenuItem<String>(
+                              value: opt.id,
+                              child: Text('${opt.name} (${opt.sizes.join(", ")} — ${opt.totalPieces} pcs)'),
+                            );
+                          }),
+                        ],
+                        onChanged: (val) {
+                          setState(() {
+                            _selectedBundleOptionId = val;
+                            _bundlePriceController.clear();
+                          });
+                        },
+                      ),
+
+                      // Show bundle detail + price input if a bundle is selected
+                      if (_selectedBundle != null) ...[
+                        const SizedBox(height: 16),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF0F0F0),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: const Color(0xFFDDDDDD)),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _selectedBundle!.name,
+                                style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.black),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Sizes: ${_selectedBundle!.sizes.join(", ")}',
+                                style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF444444)),
+                              ),
+                              Text(
+                                '${_selectedBundle!.totalPieces} pieces per bundle · ${_selectedBundle!.piecesPerSize} pieces/size',
+                                style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF444444)),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          controller: _bundlePriceController,
+                          keyboardType: TextInputType.number,
+                          style: GoogleFonts.inter(color: Colors.black),
+                          decoration: const InputDecoration(
+                            labelText: 'Price Per Bundle (₹)',
+                            hintText: 'e.g. 2500',
+                          ),
+                          validator: (v) {
+                            if (_selectedBundleOptionId != null) {
+                              if (v == null || v.trim().isEmpty) return 'Bundle price is required';
+                              if (double.tryParse(v.trim()) == null) return 'Enter a valid number';
+                            }
+                            return null;
+                          },
+                        ),
+                      ],
+                    ],
+                  ],
+                ),
               ),
+
 
               // Description & Tags
               TextFormField(

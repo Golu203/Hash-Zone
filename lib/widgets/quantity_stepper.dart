@@ -13,6 +13,11 @@ class HZQuantityStepper extends StatefulWidget {
   final double height;
   final bool isFullWidth;
   final bool showNote;
+  /// Step size for increment/decrement. Default 5 (legacy wholesale).
+  /// Pass 1 for bundle ordering (each bundle is the minimum unit).
+  final int step;
+  /// Minimum valid value. Default 5 for legacy, 1 for bundles.
+  final int minValue;
 
   const HZQuantityStepper({
     super.key,
@@ -25,6 +30,8 @@ class HZQuantityStepper extends StatefulWidget {
     this.height = 36.0,
     this.isFullWidth = false,
     this.showNote = true,
+    this.step = 5,
+    this.minValue = 5,
   }) : initialValue = initialValue ?? value ?? 5;
 
   @override
@@ -41,10 +48,11 @@ class _HZQuantityStepperState extends State<HZQuantityStepper> {
   void initState() {
     super.initState();
     _currentVal = widget.initialValue;
-    // Align to multiple of 5 initially if not zero
-    if (_currentVal > 0 && _currentVal % 5 != 0) {
-      _currentVal = (_currentVal ~/ 5) * 5;
-      if (_currentVal < 5) _currentVal = 5;
+    // Align to multiple of step initially if not zero
+    final s = widget.step;
+    if (_currentVal > 0 && _currentVal % s != 0) {
+      _currentVal = (_currentVal ~/ s) * s;
+      if (_currentVal < s) _currentVal = s;
     }
     _controller = TextEditingController(text: _currentVal.toString());
     _focusNode = FocusNode();
@@ -57,9 +65,10 @@ class _HZQuantityStepperState extends State<HZQuantityStepper> {
     if (widget.initialValue != oldWidget.initialValue && !_focusNode.hasFocus) {
       setState(() {
         _currentVal = widget.initialValue;
-        if (_currentVal > 0 && _currentVal % 5 != 0) {
-          _currentVal = (_currentVal ~/ 5) * 5;
-          if (_currentVal < 5) _currentVal = 5;
+        final s = widget.step;
+        if (_currentVal > 0 && _currentVal % s != 0) {
+          _currentVal = (_currentVal ~/ s) * s;
+          if (_currentVal < s) _currentVal = s;
         }
         _controller.text = _currentVal.toString();
         _errorText = null;
@@ -83,24 +92,26 @@ class _HZQuantityStepperState extends State<HZQuantityStepper> {
 
   void _validateAndSubmit() {
     final text = _controller.text.trim();
+    final s = widget.step;
+    final minV = widget.minValue;
     if (text.isEmpty) {
       setState(() {
-        _errorText = 'HashZone accepts wholesale orders only in multiples of 5 pieces.';
+        _errorText = s == 1
+            ? 'Please enter a valid quantity (minimum $minV).'
+            : 'HashZone accepts wholesale orders only in multiples of $s pieces.';
       });
-      if (widget.onChanged != null) {
-        widget.onChanged!(_currentVal, false);
-      }
+      if (widget.onChanged != null) widget.onChanged!(_currentVal, false);
       return;
     }
 
     final val = int.tryParse(text);
-    if (val == null || val <= 0 || val % 5 != 0) {
+    if (val == null || val < minV || (s > 1 && val % s != 0)) {
       setState(() {
-        _errorText = 'HashZone accepts wholesale orders only in multiples of 5 pieces.';
+        _errorText = s == 1
+            ? 'Please enter a valid quantity (minimum $minV).'
+            : 'HashZone accepts wholesale orders only in multiples of $s pieces.';
       });
-      if (widget.onChanged != null) {
-        widget.onChanged!(val ?? 0, false);
-      }
+      if (widget.onChanged != null) widget.onChanged!(val ?? 0, false);
       return;
     }
 
@@ -108,7 +119,6 @@ class _HZQuantityStepperState extends State<HZQuantityStepper> {
       _currentVal = val;
       _errorText = null;
     });
-
     _performUpdate(val, true);
   }
 
@@ -128,9 +138,10 @@ class _HZQuantityStepperState extends State<HZQuantityStepper> {
   }
 
   void _increment() {
-    int nextVal = _currentVal + 5;
-    if (nextVal % 5 != 0) {
-      nextVal = ((nextVal ~/ 5) + 1) * 5;
+    final s = widget.step;
+    int nextVal = _currentVal + s;
+    if (s > 1 && nextVal % s != 0) {
+      nextVal = ((nextVal ~/ s) + 1) * s;
     }
     setState(() {
       _currentVal = nextVal;
@@ -141,8 +152,10 @@ class _HZQuantityStepperState extends State<HZQuantityStepper> {
   }
 
   void _decrement() {
-    if (_currentVal <= 5) {
-      // If decreased below 5, it goes to 0 (which removes or goes to minimum)
+    final s = widget.step;
+    final minV = widget.minValue;
+    if (_currentVal <= minV) {
+      // At minimum: going below removes / goes to 0
       setState(() {
         _currentVal = 0;
         _controller.text = '0';
@@ -151,9 +164,9 @@ class _HZQuantityStepperState extends State<HZQuantityStepper> {
       _performUpdate(0, true);
       return;
     }
-    int nextVal = _currentVal - 5;
-    if (nextVal % 5 != 0) {
-      nextVal = (nextVal ~/ 5) * 5;
+    int nextVal = _currentVal - s;
+    if (s > 1 && nextVal % s != 0) {
+      nextVal = (nextVal ~/ s) * s;
     }
     if (nextVal < 0) nextVal = 0;
     setState(() {
@@ -225,17 +238,23 @@ class _HZQuantityStepperState extends State<HZQuantityStepper> {
                     ),
                     onChanged: (text) {
                       final trimmed = text.trim();
+                      final s = widget.step;
+                      final minV = widget.minValue;
                       if (trimmed.isEmpty) {
                         setState(() {
-                          _errorText = 'HashZone accepts wholesale orders only in multiples of 5 pieces.';
+                          _errorText = s == 1
+                              ? 'Please enter a valid quantity (minimum $minV).'
+                              : 'HashZone accepts wholesale orders only in multiples of $s pieces.';
                         });
                         _performUpdate(_currentVal, false);
                         return;
                       }
                       final val = int.tryParse(trimmed);
-                      if (val == null || val <= 0 || val % 5 != 0) {
+                      if (val == null || val < minV || (s > 1 && val % s != 0)) {
                         setState(() {
-                          _errorText = 'HashZone accepts wholesale orders only in multiples of 5 pieces.';
+                          _errorText = s == 1
+                              ? 'Please enter a valid quantity (minimum $minV).'
+                              : 'HashZone accepts wholesale orders only in multiples of $s pieces.';
                         });
                         _performUpdate(val ?? 0, false);
                       } else {
@@ -277,7 +296,9 @@ class _HZQuantityStepperState extends State<HZQuantityStepper> {
         if (widget.showNote && !widget.isSmall) ...[
           const SizedBox(height: 8),
           Text(
-            'HashZone is a wholesale supplier. Orders are accepted only in multiples of 5 pieces (5, 10, 15, 20...).',
+            widget.step == 1
+                ? 'Each unit is 1 complete bundle (contains ${widget.minValue > 1 ? widget.minValue.toString() + "+ pieces" : "all sizes & pieces"}).'
+                : 'HashZone is a wholesale supplier. Orders are accepted only in multiples of ${widget.step} pieces (${widget.step}, ${widget.step * 2}, ${widget.step * 3}...).',
             style: GoogleFonts.inter(
               fontSize: 10,
               fontWeight: FontWeight.w500,

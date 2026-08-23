@@ -22,15 +22,24 @@ class SupplyState {
   });
 
   factory SupplyState.fromMap(Map<String, dynamic> map, String id) {
+    DateTime? parseDate(dynamic val) {
+      if (val is Timestamp) return val.toDate();
+      if (val is String) return DateTime.tryParse(val);
+      if (val is int) return DateTime.fromMillisecondsSinceEpoch(val);
+      return null;
+    }
+
     return SupplyState(
       id: id,
-      state: map['state'] ?? '',
+      state: map['state']?.toString() ?? '',
       latitude: (map['latitude'] as num?)?.toDouble() ?? 0.0,
       longitude: (map['longitude'] as num?)?.toDouble() ?? 0.0,
-      cities: List<String>.from(map['cities'] ?? []),
-      active: map['active'] ?? true,
-      createdAt: map['createdAt'] != null ? (map['createdAt'] as Timestamp).toDate() : null,
-      updatedAt: map['updatedAt'] != null ? (map['updatedAt'] as Timestamp).toDate() : null,
+      cities: map['cities'] != null
+          ? List<String>.from((map['cities'] as List).map((e) => e.toString()))
+          : [],
+      active: map['active'] as bool? ?? true,
+      createdAt: parseDate(map['createdAt']),
+      updatedAt: parseDate(map['updatedAt']),
     );
   }
 

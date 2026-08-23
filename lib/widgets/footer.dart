@@ -58,9 +58,11 @@ class HZFooter extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Expanded(flex: 3, child: _brandColumn(context, business)),
-                      const SizedBox(width: 40),
+                      const SizedBox(width: 32),
                       Expanded(flex: 2, child: _navColumn(context)),
-                      const SizedBox(width: 40),
+                      const SizedBox(width: 32),
+                      Expanded(flex: 2, child: _legalColumn(context)),
+                      const SizedBox(width: 32),
                       Expanded(flex: 3, child: _contactColumn(context, business)),
                     ],
                   )
@@ -68,9 +70,11 @@ class HZFooter extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _brandColumn(context, business),
-                      const SizedBox(height: 40),
+                      const SizedBox(height: 36),
                       _navColumn(context),
-                      const SizedBox(height: 40),
+                      const SizedBox(height: 36),
+                      _legalColumn(context),
+                      const SizedBox(height: 36),
                       _contactColumn(context, business),
                     ],
                   ),
@@ -88,20 +92,39 @@ class HZFooter extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        '© ${DateTime.now().year} SREE MEENAKSHI TEXTILES. ALL RIGHTS RESERVED.',
+                        '© ${DateTime.now().year} SREE MEENAKSHI TEXTILES (HASH ZONE). ALL RIGHTS RESERVED.',
                         style: GoogleFonts.inter(
                           fontSize: 11,
                           letterSpacing: 1.0,
                           color: const Color(0xFF888888),
                         ),
                       ),
-                      Text(
-                        'DIGITAL CLOTHING STORE',
-                        style: GoogleFonts.inter(
-                          fontSize: 11,
-                          letterSpacing: 1.0,
-                          color: const Color(0xFF888888),
-                        ),
+                      Row(
+                        children: [
+                          InkWell(
+                            onTap: () => context.go('/terms'),
+                            child: Text(
+                              'Terms',
+                              style: GoogleFonts.inter(fontSize: 11, color: const Color(0xFF888888)),
+                            ),
+                          ),
+                          const Text(' · ', style: TextStyle(color: Color(0xFF555555))),
+                          InkWell(
+                            onTap: () => context.go('/privacy'),
+                            child: Text(
+                              'Privacy',
+                              style: GoogleFonts.inter(fontSize: 11, color: const Color(0xFF888888)),
+                            ),
+                          ),
+                          const Text(' · ', style: TextStyle(color: Color(0xFF555555))),
+                          InkWell(
+                            onTap: () => context.go('/grievance'),
+                            child: Text(
+                              'Grievance',
+                              style: GoogleFonts.inter(fontSize: 11, color: const Color(0xFF888888)),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   )
@@ -109,21 +132,36 @@ class HZFooter extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '© ${DateTime.now().year} SREE MEENAKSHI TEXTILES. ALL RIGHTS RESERVED.',
+                        '© ${DateTime.now().year} SREE MEENAKSHI TEXTILES (HASH ZONE). ALL RIGHTS RESERVED.',
                         style: GoogleFonts.inter(
                           fontSize: 10,
                           letterSpacing: 0.8,
                           color: const Color(0xFF888888),
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'DIGITAL CLOTHING STORE',
-                        style: GoogleFonts.inter(
-                          fontSize: 10,
-                          letterSpacing: 0.8,
-                          color: const Color(0xFF888888),
-                        ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          InkWell(
+                            onTap: () => context.go('/terms'),
+                            child: Text('Terms', style: GoogleFonts.inter(fontSize: 10, color: const Color(0xFF888888))),
+                          ),
+                          const Text(' · ', style: TextStyle(color: Color(0xFF555555))),
+                          InkWell(
+                            onTap: () => context.go('/privacy'),
+                            child: Text('Privacy', style: GoogleFonts.inter(fontSize: 10, color: const Color(0xFF888888))),
+                          ),
+                          const Text(' · ', style: TextStyle(color: Color(0xFF555555))),
+                          InkWell(
+                            onTap: () => context.go('/refund-policy'),
+                            child: Text('Refunds', style: GoogleFonts.inter(fontSize: 10, color: const Color(0xFF888888))),
+                          ),
+                          const Text(' · ', style: TextStyle(color: Color(0xFF555555))),
+                          InkWell(
+                            onTap: () => context.go('/shipping-policy'),
+                            child: Text('Shipping', style: GoogleFonts.inter(fontSize: 10, color: const Color(0xFF888888))),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -281,7 +319,7 @@ class HZFooter extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'NAVIGATION',
+          'QUICK LINKS',
           style: GoogleFonts.inter(
             fontSize: 12,
             fontWeight: FontWeight.bold,
@@ -295,6 +333,30 @@ class HZFooter extends StatelessWidget {
         _footerLink(context, 'Special Offers', '/products?offers=true'),
         _footerLink(context, 'About Us', '/about'),
         _footerLink(context, 'Contact Us', '/contact'),
+        _footerLink(context, 'Help & FAQs', '/faq'),
+      ],
+    );
+  }
+
+  Widget _legalColumn(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'LEGAL & POLICIES',
+          style: GoogleFonts.inter(
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 1.5,
+            color: Colors.white,
+          ),
+        ),
+        const SizedBox(height: 16),
+        _footerLink(context, 'Terms & Conditions', '/terms'),
+        _footerLink(context, 'Privacy Policy', '/privacy'),
+        _footerLink(context, 'Refund & Cancellation', '/refund-policy'),
+        _footerLink(context, 'Shipping & Delivery', '/shipping-policy'),
+        _footerLink(context, 'Grievance Redressal', '/grievance'),
       ],
     );
   }

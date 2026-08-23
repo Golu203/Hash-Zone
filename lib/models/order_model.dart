@@ -7,10 +7,21 @@ class OrderProductItem {
   final String imageUrl;
   final String sku;
   final String internalProductCode;
+  // Legacy field — preserved for old orders
   final String size;
+  // Legacy field — for old orders this is piece qty; for new bundle orders this is bundleQuantity
   final int quantity;
   final double unitPrice;
   final double lineTotal;
+
+  // ─── Bundle fields (null for legacy orders) ───────────────────────────────
+  final String? bundleName;           // e.g. "S-M-L-XL Assorted Bundle"
+  final List<String>? bundleSizes;    // e.g. ["S","M","L","XL"]
+  final int? totalPiecesPerBundle;    // e.g. 100
+  final int? piecesPerSize;           // e.g. 25
+  final int? bundleQuantity;          // number of bundles ordered
+  final double? bundlePrice;          // price of 1 bundle
+  final int? totalPieces;             // totalPiecesPerBundle * bundleQuantity
 
   const OrderProductItem({
     required this.productId,
@@ -22,7 +33,18 @@ class OrderProductItem {
     required this.quantity,
     required this.unitPrice,
     required this.lineTotal,
+    // Bundle fields
+    this.bundleName,
+    this.bundleSizes,
+    this.totalPiecesPerBundle,
+    this.piecesPerSize,
+    this.bundleQuantity,
+    this.bundlePrice,
+    this.totalPieces,
   });
+
+  /// True if this item was placed under the new bundle pricing system
+  bool get isBundleOrder => bundleName != null && bundleName!.isNotEmpty;
 
   Map<String, dynamic> toMap() => {
         'productId': productId,
@@ -34,9 +56,18 @@ class OrderProductItem {
         'quantity': quantity,
         'unitPrice': unitPrice,
         'lineTotal': lineTotal,
+        // Bundle fields (only written for new orders)
+        if (bundleName != null) 'bundleName': bundleName,
+        if (bundleSizes != null) 'bundleSizes': bundleSizes,
+        if (totalPiecesPerBundle != null) 'totalPiecesPerBundle': totalPiecesPerBundle,
+        if (piecesPerSize != null) 'piecesPerSize': piecesPerSize,
+        if (bundleQuantity != null) 'bundleQuantity': bundleQuantity,
+        if (bundlePrice != null) 'bundlePrice': bundlePrice,
+        if (totalPieces != null) 'totalPieces': totalPieces,
       };
 
   factory OrderProductItem.fromMap(Map<String, dynamic> map) {
+    final rawBundleSizes = map['bundleSizes'];
     return OrderProductItem(
       productId: map['productId'] as String? ?? '',
       title: map['title'] as String? ?? 'Product',
@@ -47,6 +78,14 @@ class OrderProductItem {
       quantity: (map['quantity'] as num?)?.toInt() ?? 1,
       unitPrice: (map['unitPrice'] as num?)?.toDouble() ?? 0.0,
       lineTotal: (map['lineTotal'] as num?)?.toDouble() ?? 0.0,
+      // Bundle fields — null-safe, will be null for all legacy orders
+      bundleName: map['bundleName'] as String?,
+      bundleSizes: rawBundleSizes != null ? List<String>.from(rawBundleSizes as List) : null,
+      totalPiecesPerBundle: (map['totalPiecesPerBundle'] as num?)?.toInt(),
+      piecesPerSize: (map['piecesPerSize'] as num?)?.toInt(),
+      bundleQuantity: (map['bundleQuantity'] as num?)?.toInt(),
+      bundlePrice: (map['bundlePrice'] as num?)?.toDouble(),
+      totalPieces: (map['totalPieces'] as num?)?.toInt(),
     );
   }
 }
@@ -355,6 +394,8 @@ class CustomerOrder {
   final String phoneNumber;
   final String whatsAppNumber;
   final String email;
+  final String? businessIdType; // 'GST' | 'PAN'
+  final String? businessIdValue;
   final DateTime orderDate;
   final String status; // 'Pending Payment', 'Order Received', 'Confirmed', 'Dispatched', 'Rejected'
   final OrderShippingAddress shippingAddress;
@@ -381,6 +422,8 @@ class CustomerOrder {
     required this.phoneNumber,
     this.whatsAppNumber = '',
     this.email = '',
+    this.businessIdType,
+    this.businessIdValue,
     required this.orderDate,
     this.status = 'Order Received',
     required this.shippingAddress,
@@ -408,6 +451,13 @@ class CustomerOrder {
         'phoneNumber': phoneNumber,
         'whatsAppNumber': whatsAppNumber,
         'email': email,
+        'businessIdType': businessIdType ?? '',
+        'businessIdValue': businessIdValue ?? '',
+        'customerBusinessDetails': {
+          'phoneNumber': phoneNumber,
+          'businessIdType': businessIdType ?? '',
+          'businessIdValue': businessIdValue ?? '',
+        },
         'orderDate': Timestamp.fromDate(orderDate),
         'status': status,
         'shippingAddress': shippingAddress.toMap(),
@@ -430,15 +480,18 @@ class CustomerOrder {
   factory CustomerOrder.fromMap(Map<String, dynamic> map, String docId) {
     final rawItems = map['items'] as List<dynamic>? ?? [];
     final rawTimeline = map['timeline'] as List<dynamic>? ?? [];
+    final rawContact = map['customerBusinessDetails'] as Map<String, dynamic>?;
 
     return CustomerOrder(
       id: docId,
       customerId: map['customerId'] as String? ?? '',
       customerName: map['customerName'] as String? ?? 'Customer',
       companyName: map['companyName'] as String? ?? '',
-      phoneNumber: map['phoneNumber'] as String? ?? '',
+      phoneNumber: map['phoneNumber'] as String? ?? (rawContact?['phoneNumber'] as String?) ?? '',
       whatsAppNumber: map['whatsAppNumber'] as String? ?? '',
       email: map['email'] as String? ?? '',
+      businessIdType: map['businessIdType'] as String? ?? (rawContact?['businessIdType'] as String?),
+      businessIdValue: map['businessIdValue'] as String? ?? (rawContact?['businessIdValue'] as String?),
       orderDate: (map['orderDate'] as Timestamp?)?.toDate() ?? DateTime.now(),
       status: map['status'] as String? ?? 'Order Received',
       shippingAddress: map['shippingAddress'] != null

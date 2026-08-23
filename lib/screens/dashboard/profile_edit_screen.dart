@@ -20,6 +20,8 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
   final _companyCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
   final _waCtrl = TextEditingController();
+  String _businessIdType = 'GST';
+  final _businessIdValueCtrl = TextEditingController();
   bool _isSaving = false;
   bool _saved = false;
 
@@ -36,6 +38,10 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
     _companyCtrl.text = profile.companyName;
     _phoneCtrl.text = profile.phoneNumber;
     _waCtrl.text = profile.whatsAppNumber;
+    setState(() {
+      _businessIdType = profile.businessIdType.isNotEmpty ? profile.businessIdType : 'GST';
+      _businessIdValueCtrl.text = profile.businessIdValue;
+    });
   }
 
   @override
@@ -44,6 +50,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
     _companyCtrl.dispose();
     _phoneCtrl.dispose();
     _waCtrl.dispose();
+    _businessIdValueCtrl.dispose();
     super.dispose();
   }
 
@@ -62,6 +69,8 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
         companyName: _companyCtrl.text.trim(),
         phoneNumber: _phoneCtrl.text.trim(),
         whatsAppNumber: _waCtrl.text.trim(),
+        businessIdType: _businessIdType,
+        businessIdValue: _businessIdValueCtrl.text.trim().toUpperCase(),
       );
 
       await CustomerAuthService().updateProfile(updated);
@@ -124,17 +133,126 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                       inputType: TextInputType.phone,
                       validator: (v) {
                         if (v == null || v.trim().isEmpty) return 'Mobile number is required';
-                        if (v.replaceAll(RegExp(r'[^0-9]'), '').length < 10) return 'Enter a valid number';
+                        if (v.replaceAll(RegExp(r'[^0-9]'), '').length < 10) return 'Enter a valid 10-digit number';
                         return null;
                       }),
+                  const SizedBox(height: 18),
+
+                  // Business Identification Selector
+                  Text(
+                    'Business Identification *',
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: InkWell(
+                          onTap: () => setState(() {
+                            _businessIdType = 'GST';
+                            _formKey.currentState?.validate();
+                          }),
+                          borderRadius: BorderRadius.circular(10),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            decoration: BoxDecoration(
+                              color: _businessIdType == 'GST' ? Colors.black : const Color(0xFFFAFAFA),
+                              border: Border.all(
+                                color: _businessIdType == 'GST' ? Colors.black : const Color(0xFFDDDDDD),
+                                width: 1.5,
+                              ),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Center(
+                              child: Text(
+                                'GST Number',
+                                style: GoogleFonts.inter(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13,
+                                  color: _businessIdType == 'GST' ? Colors.white : Colors.black87,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: InkWell(
+                          onTap: () => setState(() {
+                            _businessIdType = 'PAN';
+                            _formKey.currentState?.validate();
+                          }),
+                          borderRadius: BorderRadius.circular(10),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            decoration: BoxDecoration(
+                              color: _businessIdType == 'PAN' ? Colors.black : const Color(0xFFFAFAFA),
+                              border: Border.all(
+                                color: _businessIdType == 'PAN' ? Colors.black : const Color(0xFFDDDDDD),
+                                width: 1.5,
+                              ),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Center(
+                              child: Text(
+                                'PAN Number',
+                                style: GoogleFonts.inter(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13,
+                                  color: _businessIdType == 'PAN' ? Colors.white : Colors.black87,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 14),
-                  _field('WhatsApp Number *', Icons.chat_outlined, _waCtrl,
-                      inputType: TextInputType.phone,
+
+                  if (_businessIdType == 'GST')
+                    _field(
+                      'GST Number *',
+                      Icons.verified_outlined,
+                      _businessIdValueCtrl,
+                      hintText: 'e.g. 33AAAAA0000A1Z5',
+                      textCapitalization: TextCapitalization.characters,
                       validator: (v) {
-                        if (v == null || v.trim().isEmpty) return 'WhatsApp number is required';
-                        if (v.replaceAll(RegExp(r'[^0-9]'), '').length < 10) return 'Enter a valid number';
+                        if (v == null || v.trim().isEmpty) return 'GST Number is required';
+                        final clean = v.trim().toUpperCase();
+                        final gstRegex = RegExp(r'^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$');
+                        if (!gstRegex.hasMatch(clean)) {
+                          return 'Enter a valid 15-character GST format (e.g. 33AAAAA0000A1Z5)';
+                        }
                         return null;
-                      }),
+                      },
+                    )
+                  else
+                    _field(
+                      'PAN Number *',
+                      Icons.badge_outlined,
+                      _businessIdValueCtrl,
+                      hintText: 'e.g. ABCDE1234F',
+                      textCapitalization: TextCapitalization.characters,
+                      validator: (v) {
+                        if (v == null || v.trim().isEmpty) return 'PAN Number is required';
+                        final clean = v.trim().toUpperCase();
+                        final panRegex = RegExp(r'^[A-Z]{5}[0-9]{4}[A-Z]{1}$');
+                        if (!panRegex.hasMatch(clean)) {
+                          return 'Enter a valid 10-character PAN format (e.g. ABCDE1234F)';
+                        }
+                        return null;
+                      },
+                    ),
+                  const SizedBox(height: 14),
+
+                  _field('WhatsApp Number (Optional)', Icons.chat_outlined, _waCtrl,
+                      inputType: TextInputType.phone),
                   const SizedBox(height: 28),
 
                   // Save Button
@@ -177,13 +295,16 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
   Widget _field(String label, IconData icon, TextEditingController ctrl, {
     String? Function(String?)? validator,
     TextInputType inputType = TextInputType.text,
+    String? hintText,
+    TextCapitalization textCapitalization = TextCapitalization.none,
   }) {
     return TextFormField(
       controller: ctrl,
       keyboardType: inputType,
+      textCapitalization: textCapitalization,
       textInputAction: TextInputAction.next,
       validator: validator,
-      decoration: _dec(label, icon),
+      decoration: _dec(label, icon, hintText: hintText),
     );
   }
 
@@ -194,8 +315,10 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
     );
   }
 
-  InputDecoration _dec(String label, IconData icon) => InputDecoration(
+  InputDecoration _dec(String label, IconData icon, {String? hintText}) => InputDecoration(
         labelText: label,
+        hintText: hintText,
+        hintStyle: GoogleFonts.inter(fontSize: 12, color: Colors.black26),
         labelStyle: GoogleFonts.inter(fontSize: 13, color: Colors.black54),
         prefixIcon: Icon(icon, size: 18, color: Colors.black54),
         filled: true,

@@ -20,12 +20,153 @@ class SupplyNetworkProvider extends ChangeNotifier {
   }
 
   void _initStream() {
-    _sub = _firestoreService.streamSupplyNetwork().listen((newList) {
-      _states = newList;
-      _states.sort((a, b) => a.state.compareTo(b.state));
+    _sub = _firestoreService.streamSupplyNetwork().listen((newList) async {
+      if (newList.isEmpty) {
+        // If collection is empty, seed defaults
+        await _seedDefaultLocations();
+      } else {
+        _states = newList;
+        _states.sort((a, b) => a.state.compareTo(b.state));
+        _isLoading = false;
+        notifyListeners();
+      }
+    }, onError: (e) {
+      debugPrint('Supply network stream error: $e');
+      if (_states.isEmpty) {
+        _useFallbackDefaults();
+      }
       _isLoading = false;
       notifyListeners();
     });
+
+    // Safety timeout: Ensure loading spinner never hangs more than 3 seconds
+    Future.delayed(const Duration(seconds: 3), () {
+      if (_isLoading) {
+        if (_states.isEmpty) {
+          _useFallbackDefaults();
+        }
+        _isLoading = false;
+        notifyListeners();
+      }
+    });
+  }
+
+  void _useFallbackDefaults() {
+    _states = _getDefaultSeedStates();
+  }
+
+  List<SupplyState> _getDefaultSeedStates() {
+    return [
+      SupplyState(
+        id: 'default_tamil_nadu',
+        state: 'Tamil Nadu',
+        latitude: 11.1271,
+        longitude: 78.6569,
+        cities: ['Tiruppur', 'Coimbatore', 'Chennai', 'Madurai', 'Salem', 'Erode'],
+        active: true,
+      ),
+      SupplyState(
+        id: 'default_karnataka',
+        state: 'Karnataka',
+        latitude: 15.3173,
+        longitude: 75.7139,
+        cities: ['Bengaluru', 'Mysuru', 'Hubballi', 'Mangaluru'],
+        active: true,
+      ),
+      SupplyState(
+        id: 'default_maharashtra',
+        state: 'Maharashtra',
+        latitude: 19.7515,
+        longitude: 75.7139,
+        cities: ['Mumbai', 'Pune', 'Nagpur', 'Nashik'],
+        active: true,
+      ),
+      SupplyState(
+        id: 'default_delhi',
+        state: 'Delhi',
+        latitude: 28.7041,
+        longitude: 77.1025,
+        cities: ['New Delhi', 'North Delhi', 'South Delhi'],
+        active: true,
+      ),
+      SupplyState(
+        id: 'default_gujarat',
+        state: 'Gujarat',
+        latitude: 22.2587,
+        longitude: 71.1924,
+        cities: ['Surat', 'Ahmedabad', 'Vadodara', 'Rajkot'],
+        active: true,
+      ),
+      SupplyState(
+        id: 'default_telangana',
+        state: 'Telangana',
+        latitude: 18.1124,
+        longitude: 79.0193,
+        cities: ['Hyderabad', 'Warangal', 'Nizamabad'],
+        active: true,
+      ),
+      SupplyState(
+        id: 'default_kerala',
+        state: 'Kerala',
+        latitude: 10.8505,
+        longitude: 76.2711,
+        cities: ['Kochi', 'Kozhikode', 'Thiruvananthapuram', 'Thrissur'],
+        active: true,
+      ),
+      SupplyState(
+        id: 'default_andhra_pradesh',
+        state: 'Andhra Pradesh',
+        latitude: 15.9129,
+        longitude: 79.7400,
+        cities: ['Visakhapatnam', 'Vijayawada', 'Guntur', 'Tirupati'],
+        active: true,
+      ),
+      SupplyState(
+        id: 'default_west_bengal',
+        state: 'West Bengal',
+        latitude: 22.9868,
+        longitude: 87.8550,
+        cities: ['Kolkata', 'Howrah', 'Siliguri'],
+        active: true,
+      ),
+      SupplyState(
+        id: 'default_rajasthan',
+        state: 'Rajasthan',
+        latitude: 27.0238,
+        longitude: 74.2179,
+        cities: ['Jaipur', 'Jodhpur', 'Udaipur'],
+        active: true,
+      ),
+      SupplyState(
+        id: 'default_uttar_pradesh',
+        state: 'Uttar Pradesh',
+        latitude: 26.8467,
+        longitude: 80.9462,
+        cities: ['Lucknow', 'Kanpur', 'Noida', 'Varanasi'],
+        active: true,
+      ),
+      SupplyState(
+        id: 'default_punjab',
+        state: 'Punjab',
+        latitude: 31.1471,
+        longitude: 75.3412,
+        cities: ['Ludhiana', 'Amritsar', 'Jalandhar'],
+        active: true,
+      ),
+    ];
+  }
+
+  Future<void> _seedDefaultLocations() async {
+    final defaultLocations = _getDefaultSeedStates();
+    try {
+      for (final s in defaultLocations) {
+        await _firestoreService.saveSupplyState(s);
+      }
+    } catch (_) {
+      _states = defaultLocations;
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 
   // Predefined geographic centers for Indian States & UTs (as robust fallback)

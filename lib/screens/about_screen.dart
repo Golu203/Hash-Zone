@@ -534,18 +534,22 @@ class AboutScreen extends StatelessWidget {
             clipBehavior: Clip.antiAlias,
             child: Builder(
               builder: (context) {
-                final String viewType = 'leaflet-map-${activeStates.hashCode}';
-                ui_web.platformViewRegistry.registerViewFactory(
-                  viewType,
-                  (int viewId) {
-                    final iframe = html.IFrameElement()
-                      ..style.width = '100%'
-                      ..style.height = '100%'
-                      ..style.border = 'none'
-                      ..srcdoc = _generateMapHtml(activeStates);
-                    return iframe;
-                  },
-                );
+                final String viewType = 'leaflet-map-${activeStates.length}-${activeStates.isEmpty ? 0 : activeStates.first.state.hashCode}';
+                try {
+                  ui_web.platformViewRegistry.registerViewFactory(
+                    viewType,
+                    (int viewId) {
+                      final iframe = html.IFrameElement()
+                        ..style.width = '100%'
+                        ..style.height = '100%'
+                        ..style.border = 'none'
+                        ..srcdoc = _generateMapHtml(activeStates);
+                      return iframe;
+                    },
+                  );
+                } catch (_) {
+                  // Already registered — safe to ignore; HtmlElementView reuses the factory
+                }
                 return HtmlElementView(viewType: viewType);
               },
             ),

@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../providers/cart_provider.dart';
 import '../providers/catalog_provider.dart';
 import '../providers/business_provider.dart';
+import '../providers/customer_auth_provider.dart';
 import '../widgets/navbar.dart';
 import '../widgets/footer.dart';
 import '../widgets/quantity_stepper.dart';
@@ -68,6 +69,9 @@ class CartScreen extends StatelessWidget {
     }
     final groupedList = groupedItems.values.toList();
 
+    // Legacy multiples-of-5 check (only for non-bundle items)
+    final hasInvalidLegacyQty = cart.items.any((item) => !item.isBundleItem && item.quantity % 5 != 0);
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: const HZNavBar(),
@@ -75,7 +79,6 @@ class CartScreen extends StatelessWidget {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            // Announcement/Header Banner
             if (business.settings.announcementText.isNotEmpty)
               Container(
                 width: double.infinity,
@@ -124,8 +127,8 @@ class CartScreen extends StatelessWidget {
                     _buildEmptyCart(context)
                   else
                     isMobile
-                        ? _buildMobileLayout(context, cart, groupedList, catalog, business)
-                        : _buildDesktopLayout(context, cart, groupedList, catalog, business),
+                        ? _buildMobileLayout(context, cart, groupedList, catalog, business, hasInvalidLegacyQty)
+                        : _buildDesktopLayout(context, cart, groupedList, catalog, business, hasInvalidLegacyQty),
                 ],
               ),
             ),
@@ -175,11 +178,11 @@ class CartScreen extends StatelessWidget {
     List<GroupedCartItem> groupedList,
     CatalogProvider catalog,
     BusinessProvider business,
+    bool hasInvalidLegacyQty,
   ) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Cart Items List (Left Side)
         Expanded(
           flex: 2,
           child: Column(
@@ -207,11 +210,9 @@ class CartScreen extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 48),
-
-        // Cart Summary Card (Right Side)
         Expanded(
           flex: 1,
-          child: _buildSummaryCard(context, cart, business),
+          child: _buildSummaryCard(context, cart, business, hasInvalidLegacyQty),
         ),
       ],
     );
@@ -223,6 +224,7 @@ class CartScreen extends StatelessWidget {
     List<GroupedCartItem> groupedList,
     CatalogProvider catalog,
     BusinessProvider business,
+    bool hasInvalidLegacyQty,
   ) {
     return Column(
       children: [
@@ -248,11 +250,12 @@ class CartScreen extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 32),
-        _buildSummaryCard(context, cart, business),
+        _buildSummaryCard(context, cart, business, hasInvalidLegacyQty),
       ],
     );
   }
 
+  // ── Desktop Grouped Cart Card ──────────────────────────────────────────────
   Widget _buildGroupedCartCard(
     BuildContext context,
     GroupedCartItem groupedItem,
@@ -274,7 +277,6 @@ class CartScreen extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Product Image
           Container(
             width: 80,
             height: 106,
@@ -288,7 +290,6 @@ class CartScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 20),
-          // Product Details (Title, Table, Product Total)
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -309,97 +310,14 @@ class CartScreen extends StatelessWidget {
                   ),
                 ],
                 const SizedBox(height: 12),
-                
-                // Sizes Table
-                Table(
-                  columnWidths: const {
-                    0: FlexColumnWidth(1), // Size
-                    1: FlexColumnWidth(2), // Qty Stepper
-                    2: FlexColumnWidth(2), // Unit Price
-                    3: FlexColumnWidth(2), // Total
-                    4: FixedColumnWidth(40), // Delete button
-                  },
-                  defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-                  children: [
-                    // Table Header
-                    TableRow(
-                      decoration: const BoxDecoration(
-                        border: Border(bottom: BorderSide(color: Color(0xFFE5E5E5), width: 1.5)),
-                      ),
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 6),
-                          child: Text('Size', style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold, color: const Color(0xFF666666))),
-                        ),
-                        Text('Qty', style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold, color: const Color(0xFF666666)), textAlign: TextAlign.center),
-                        Text('Unit Price', style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold, color: const Color(0xFF666666)), textAlign: TextAlign.center),
-                        Text('Total', style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold, color: const Color(0xFF666666)), textAlign: TextAlign.center),
-                        const SizedBox.shrink(),
-                      ],
-                    ),
-                    // Table Rows for each size
-                    ...groupedItem.sizes.map((item) {
-                      return TableRow(
-                        decoration: const BoxDecoration(
-                          border: Border(bottom: BorderSide(color: Color(0xFFEEEEEE))),
-                        ),
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 8),
-                            child: Text(
-                              item.size,
-                              style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.black),
-                            ),
-                          ),
-                          _HZCartInlineQuantityStepper(
-                            productId: item.productId,
-                            size: item.size,
-                            quantity: item.quantity,
-                            cart: cart,
-                          ),
-                          Text(
-                            '₹${item.price.toStringAsFixed(0)}',
-                            style: GoogleFonts.inter(fontSize: 13, color: Colors.black, fontWeight: FontWeight.w500),
-                            textAlign: TextAlign.center,
-                          ),
-                          Text(
-                            '₹${(item.price * item.quantity).toStringAsFixed(0)}',
-                            style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.black),
-                            textAlign: TextAlign.center,
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.close, size: 16, color: Color(0xFF888888)),
-                            onPressed: () => cart.removeItem(item.productId, item.size),
-                          ),
-                        ],
-                      );
-                    }),
-                  ],
-                ),
-                
-                 const SizedBox(height: 12),
-                Text(
-                  'HashZone is a wholesale supplier. Orders are accepted only in multiples of 5 pieces (5, 10, 15, 20...).',
-                  style: GoogleFonts.inter(
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.black54,
-                    height: 1.3,
-                  ),
-                ),
-                if (groupedItem.sizes.any((item) => item.quantity % 5 != 0)) ...[
-                  const SizedBox(height: 6),
-                  Text(
-                    'HashZone accepts wholesale orders only in multiples of 5 pieces.',
-                    style: GoogleFonts.inter(
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.red.shade700,
-                    ),
-                  ),
-                ],
+
+                // Bundle rows or legacy size table
+                if (groupedItem.sizes.isNotEmpty && groupedItem.sizes.first.isBundleItem)
+                  _buildBundleCartRows(context, groupedItem.sizes, cart, isMobile: false)
+                else
+                  _buildLegacySizeTable(context, groupedItem.sizes, cart, isMobile: false),
+
                 const SizedBox(height: 16),
-                // Product Total Display
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -422,6 +340,7 @@ class CartScreen extends StatelessWidget {
     );
   }
 
+  // ── Mobile Grouped Cart Card ───────────────────────────────────────────────
   Widget _buildGroupedMobileCartCard(
     BuildContext context,
     GroupedCartItem groupedItem,
@@ -438,7 +357,6 @@ class CartScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Product Image and Title Row
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -469,90 +387,14 @@ class CartScreen extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          
-          // Table for sizes
-          Table(
-            columnWidths: const {
-              0: FlexColumnWidth(1), // Size
-              1: FlexColumnWidth(2.5), // Qty Stepper
-              2: FlexColumnWidth(2), // Total Price
-              3: FixedColumnWidth(30), // Delete button
-            },
-            defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-            children: [
-              TableRow(
-                decoration: const BoxDecoration(
-                  border: Border(bottom: BorderSide(color: Color(0xFFE5E5E5), width: 1.5)),
-                ),
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: Text('Size', style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.bold, color: const Color(0xFF666666))),
-                  ),
-                  Text('Qty', style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.bold, color: const Color(0xFF666666)), textAlign: TextAlign.center),
-                  Text('Total', style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.bold, color: const Color(0xFF666666)), textAlign: TextAlign.center),
-                  const SizedBox.shrink(),
-                ],
-              ),
-              ...groupedItem.sizes.map((item) {
-                return TableRow(
-                  decoration: const BoxDecoration(
-                    border: Border(bottom: BorderSide(color: Color(0xFFEEEEEE))),
-                  ),
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 6),
-                      child: Text(
-                        item.size,
-                        style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.black),
-                      ),
-                    ),
-                    _HZCartInlineQuantityStepper(
-                      productId: item.productId,
-                      size: item.size,
-                      quantity: item.quantity,
-                      cart: cart,
-                    ),
-                    Text(
-                      '₹${(item.price * item.quantity).toStringAsFixed(0)}',
-                      style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.black),
-                      textAlign: TextAlign.center,
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close, size: 14, color: Color(0xFF888888)),
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                      onPressed: () => cart.removeItem(item.productId, item.size),
-                    ),
-                  ],
-                );
-              }),
-            ],
-          ),
-          
-          const SizedBox(height: 12),
-          Text(
-            'HashZone is a wholesale supplier. Orders are accepted only in multiples of 5 pieces (5, 10, 15, 20...).',
-            style: GoogleFonts.inter(
-              fontSize: 10.0,
-              fontWeight: FontWeight.w500,
-              color: Colors.black54,
-              height: 1.3,
-            ),
-          ),
-          if (groupedItem.sizes.any((item) => item.quantity % 5 != 0)) ...[
-            const SizedBox(height: 6),
-            Text(
-              'HashZone accepts wholesale orders only in multiples of 5 pieces.',
-              style: GoogleFonts.inter(
-                fontSize: 10.0,
-                fontWeight: FontWeight.bold,
-                color: Colors.red.shade700,
-              ),
-            ),
-          ],
+
+          // Bundle rows or legacy table
+          if (groupedItem.sizes.isNotEmpty && groupedItem.sizes.first.isBundleItem)
+            _buildBundleCartRows(context, groupedItem.sizes, cart, isMobile: true)
+          else
+            _buildLegacySizeTable(context, groupedItem.sizes, cart, isMobile: true),
+
           const SizedBox(height: 10),
-          // Product Total Display
           Align(
             alignment: Alignment.centerRight,
             child: Text(
@@ -569,8 +411,219 @@ class CartScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildSummaryCard(BuildContext context, CartProvider cart, BusinessProvider business) {
-    final bool hasInvalidQuantity = cart.items.any((item) => item.quantity % 5 != 0);
+  // ── Bundle cart rows ───────────────────────────────────────────────────────
+  Widget _buildBundleCartRows(
+    BuildContext context,
+    List<CartItem> items,
+    CartProvider cart, {
+    required bool isMobile,
+  }) {
+    return Column(
+      children: items.map((item) {
+        final totalPcs = item.totalPieces;
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF0F0F0),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0xFFDDDDDD)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            item.bundleName ?? 'Bundle',
+                            style: GoogleFonts.inter(
+                              fontSize: isMobile ? 11 : 13,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.black,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            item.bundleSizes?.join(', ') ?? '',
+                            style: GoogleFonts.inter(
+                              fontSize: isMobile ? 10 : 11,
+                              color: const Color(0xFF666666),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, size: 16, color: Color(0xFF888888)),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      onPressed: () => cart.removeItem(item.productId, item.size),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    _HZCartInlineQuantityStepper(
+                      productId: item.productId,
+                      size: item.size,
+                      quantity: item.quantity,
+                      cart: cart,
+                      step: 1,
+                      minValue: 1,
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          '₹${item.price.toStringAsFixed(0)}/bundle',
+                          style: GoogleFonts.inter(
+                              fontSize: isMobile ? 10 : 11, color: const Color(0xFF555555)),
+                        ),
+                        Text(
+                          '₹${(item.price * item.quantity).toStringAsFixed(0)}',
+                          style: GoogleFonts.inter(
+                              fontSize: isMobile ? 13 : 14,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black),
+                        ),
+                        Text(
+                          '$totalPcs pcs total',
+                          style: GoogleFonts.inter(
+                              fontSize: isMobile ? 9 : 10, color: const Color(0xFF888888)),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  // ── Legacy size table ──────────────────────────────────────────────────────
+  Widget _buildLegacySizeTable(
+    BuildContext context,
+    List<CartItem> items,
+    CartProvider cart, {
+    required bool isMobile,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Table(
+          columnWidths: isMobile
+              ? const {
+                  0: FlexColumnWidth(1),
+                  1: FlexColumnWidth(2.5),
+                  2: FlexColumnWidth(2),
+                  3: FixedColumnWidth(30),
+                }
+              : const {
+                  0: FlexColumnWidth(1),
+                  1: FlexColumnWidth(2),
+                  2: FlexColumnWidth(2),
+                  3: FlexColumnWidth(2),
+                  4: FixedColumnWidth(40),
+                },
+          defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+          children: [
+            TableRow(
+              decoration: const BoxDecoration(
+                  border: Border(bottom: BorderSide(color: Color(0xFFE5E5E5), width: 1.5))),
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  child: Text('Size',
+                      style: GoogleFonts.inter(
+                          fontSize: isMobile ? 10 : 11, fontWeight: FontWeight.bold, color: const Color(0xFF666666))),
+                ),
+                Text('Qty',
+                    style: GoogleFonts.inter(
+                        fontSize: isMobile ? 10 : 11, fontWeight: FontWeight.bold, color: const Color(0xFF666666)),
+                    textAlign: TextAlign.center),
+                if (!isMobile)
+                  Text('Unit Price',
+                      style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold, color: const Color(0xFF666666)),
+                      textAlign: TextAlign.center),
+                Text('Total',
+                    style: GoogleFonts.inter(
+                        fontSize: isMobile ? 10 : 11, fontWeight: FontWeight.bold, color: const Color(0xFF666666)),
+                    textAlign: TextAlign.center),
+                const SizedBox.shrink(),
+              ],
+            ),
+            ...items.map((item) {
+              return TableRow(
+                decoration: const BoxDecoration(
+                    border: Border(bottom: BorderSide(color: Color(0xFFEEEEEE)))),
+                children: [
+                  Padding(
+                    padding: EdgeInsets.symmetric(vertical: isMobile ? 6 : 8),
+                    child: Text(item.size,
+                        style: GoogleFonts.inter(
+                            fontSize: isMobile ? 12 : 13, fontWeight: FontWeight.w600, color: Colors.black)),
+                  ),
+                  _HZCartInlineQuantityStepper(
+                    productId: item.productId,
+                    size: item.size,
+                    quantity: item.quantity,
+                    cart: cart,
+                  ),
+                  if (!isMobile)
+                    Text('₹${item.price.toStringAsFixed(0)}',
+                        style: GoogleFonts.inter(fontSize: 13, color: Colors.black, fontWeight: FontWeight.w500),
+                        textAlign: TextAlign.center),
+                  Text('₹${(item.price * item.quantity).toStringAsFixed(0)}',
+                      style: GoogleFonts.inter(
+                          fontSize: isMobile ? 12 : 13, fontWeight: FontWeight.bold, color: Colors.black),
+                      textAlign: TextAlign.center),
+                  IconButton(
+                    icon: Icon(Icons.close, size: isMobile ? 14 : 16, color: const Color(0xFF888888)),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    onPressed: () => cart.removeItem(item.productId, item.size),
+                  ),
+                ],
+              );
+            }),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Wholesale: orders in multiples of 5 pieces.',
+          style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w500, color: Colors.black54),
+        ),
+        if (items.any((item) => item.quantity % 5 != 0)) ...[
+          const SizedBox(height: 4),
+          Text(
+            'Fix quantities to multiples of 5 before checkout.',
+            style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.red.shade700),
+          ),
+        ],
+      ],
+    );
+  }
+
+  // ── Summary Card ───────────────────────────────────────────────────────────
+  Widget _buildSummaryCard(
+    BuildContext context,
+    CartProvider cart,
+    BusinessProvider business,
+    bool hasInvalidLegacyQty,
+  ) {
+    final totalBundles = cart.items.where((i) => i.isBundleItem).fold<int>(0, (s, i) => s + i.quantity);
+    final totalPieces = cart.items.fold<int>(0, (s, i) => s + i.totalPieces);
 
     return Container(
       padding: const EdgeInsets.all(24),
@@ -584,7 +637,7 @@ class CartScreen extends StatelessWidget {
             blurRadius: 10,
             offset: Offset(0, 4),
           )
-        ]
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -602,13 +655,31 @@ class CartScreen extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('Total Quantity', style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF666666))),
-              Text('${cart.totalQuantity}', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.black)),
-            ],
-          ),
+          if (totalBundles > 0) ...[
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Total Bundles', style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF666666))),
+                Text('$totalBundles', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.black)),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Total Pieces', style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF666666))),
+                Text('$totalPieces', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.black)),
+              ],
+            ),
+          ] else ...[
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Total Quantity', style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF666666))),
+                Text('${cart.totalQuantity}', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.black)),
+              ],
+            ),
+          ],
           const Divider(height: 24, color: Color(0xFFE5E5E5)),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -625,7 +696,20 @@ class CartScreen extends StatelessWidget {
             width: double.infinity,
             height: 52,
             child: ElevatedButton.icon(
-              onPressed: hasInvalidQuantity ? null : () => context.go('/checkout'),
+              onPressed: hasInvalidLegacyQty
+                  ? null
+                  : () {
+                      final auth = Provider.of<CustomerAuthProvider>(context, listen: false);
+                      if (!auth.isAuthenticated) {
+                        if (auth.needsOnboarding) {
+                          context.go('/onboarding?redirect=${Uri.encodeComponent('/checkout')}');
+                        } else {
+                          context.go('/login?redirect=${Uri.encodeComponent('/checkout')}');
+                        }
+                      } else {
+                        context.go('/checkout');
+                      }
+                    },
               icon: const Icon(Icons.shopping_bag_outlined, color: Colors.white, size: 18),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.black,
@@ -640,10 +724,10 @@ class CartScreen extends StatelessWidget {
               ),
             ),
           ),
-          if (hasInvalidQuantity) ...[
+          if (hasInvalidLegacyQty) ...[
             const SizedBox(height: 12),
             Text(
-              '⚠️ Some items have invalid quantities. HashZone accepts wholesale orders only in multiples of 5 pieces.',
+              '⚠️ Some items have invalid quantities. Please fix quantities to multiples of 5.',
               textAlign: TextAlign.center,
               style: GoogleFonts.inter(
                 fontSize: 11,
@@ -683,12 +767,16 @@ class _HZCartInlineQuantityStepper extends StatelessWidget {
   final String size;
   final int quantity;
   final CartProvider cart;
+  final int step;
+  final int minValue;
 
   const _HZCartInlineQuantityStepper({
     required this.productId,
     required this.size,
     required this.quantity,
     required this.cart,
+    this.step = 5,
+    this.minValue = 5,
   });
 
   @override
@@ -698,6 +786,9 @@ class _HZCartInlineQuantityStepper extends StatelessWidget {
         initialValue: quantity,
         isSmall: true,
         height: 28,
+        step: step,
+        minValue: minValue,
+        showNote: false,
         onChanged: (newQty, isValid) {
           if (isValid) {
             cart.updateQuantity(productId, size, newQty);
@@ -707,4 +798,3 @@ class _HZCartInlineQuantityStepper extends StatelessWidget {
     );
   }
 }
-

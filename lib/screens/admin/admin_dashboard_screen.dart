@@ -374,6 +374,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             icon: Icons.map_outlined,
             route: '/admin/supply-network',
           ),
+          _moduleCard(
+            context,
+            title: 'Bundle Options',
+            subtitle: 'Create and manage reusable bundle size templates (e.g. S-M-L-XL, 100 pcs). Assign them to products.',
+            icon: Icons.inventory_2_outlined,
+            route: '/admin/bundle-options',
+          ),
         ];
       case 'orders':
         return [

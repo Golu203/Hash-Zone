@@ -1,406 +1,209 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/gestures.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:intl/intl.dart';
 import '../models/product.dart';
 
-class HZSizePriceTable extends StatefulWidget {
+/// HZBundleInfoWidget — replaces the old HZSizePriceTable.
+/// Shows bundle configuration details: name, sizes, pieces/size,
+/// total pieces per bundle, and price per bundle.
+/// Falls back to legacy size/price table for products not yet migrated.
+class HZBundleInfoWidget extends StatelessWidget {
   final Product product;
   final bool isSmall;
-  final bool isScrollable;
 
-  const HZSizePriceTable({
+  const HZBundleInfoWidget({
     super.key,
     required this.product,
     this.isSmall = false,
-    this.isScrollable = true,
   });
 
   @override
-  State<HZSizePriceTable> createState() => _HZSizePriceTableState();
-}
-
-class _HZSizePriceTableState extends State<HZSizePriceTable> {
-  late ScrollController _scrollController;
-  bool _showScrollIndicator = false;
-
-  final currencyFormatter = NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0);
-
-  static const _kSizeOrder = [
-    'XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL', 'Free Size',
-  ];
-
-  @override
-  void initState() {
-    super.initState();
-    _scrollController = ScrollController();
-    _scrollController.addListener(_onScroll);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _checkScrollable();
-    });
-  }
-
-  @override
-  void dispose() {
-    _scrollController.removeListener(_onScroll);
-    _scrollController.dispose();
-    super.dispose();
-  }
-
-  @override
-  void didUpdateWidget(covariant HZSizePriceTable oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _checkScrollable();
-    });
-  }
-
-  bool _canScrollUp = false;
-  bool _canScrollDown = false;
-
-  void _onScroll() {
-    _checkScrollable();
-  }
-
-  void _checkScrollable() {
-    if (!_scrollController.hasClients) return;
-    final maxScroll = _scrollController.position.maxScrollExtent;
-    final currentScroll = _scrollController.offset;
-    
-    final canUp = currentScroll > 0.5;
-    final canDown = maxScroll > 0 && currentScroll < maxScroll - 0.5;
-    final canScrollIndicator = maxScroll > 0 && currentScroll < maxScroll - 4.0;
-
-    if (_canScrollUp != canUp || _canScrollDown != canDown || _showScrollIndicator != canScrollIndicator) {
-      setState(() {
-        _canScrollUp = canUp;
-        _canScrollDown = canDown;
-        _showScrollIndicator = canScrollIndicator;
-      });
-    }
-  }
-
-  List<String> _sortedSizes(List<String> sizes) {
-    final copy = List<String>.from(sizes);
-    copy.sort((a, b) {
-      final ai = _kSizeOrder.indexOf(a);
-      final bi = _kSizeOrder.indexOf(b);
-      if (ai != -1 && bi != -1) return ai.compareTo(bi);
-      if (ai != -1) return -1;
-      if (bi != -1) return 1;
-
-      final an = double.tryParse(a.replaceAll(RegExp(r'[^\d.]'), ''));
-      final bn = double.tryParse(b.replaceAll(RegExp(r'[^\d.]'), ''));
-      if (an != null && bn != null) return an.compareTo(bn);
-      if (an != null) return -1;
-      if (bn != null) return 1;
-      return a.compareTo(b);
-    });
-    return copy;
-  }
-
-  String getSizePriceString(String size) {
-    return widget.product.getPriceLabelForSize(size);
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final sizesList = widget.product.availableSizes.isNotEmpty
-        ? widget.product.availableSizes
-        : ['Free Size'];
-    final sortedSizesList = _sortedSizes(sizesList);
-    final isSmall = widget.isSmall;
-
-    if (!widget.isScrollable) {
-      return Container(
-        width: double.infinity,
-        decoration: BoxDecoration(
-          color: const Color(0xFFF9F9FA),
-          borderRadius: BorderRadius.circular(6),
-          border: Border.all(color: const Color(0xFFE5E5E5)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Sticky Header
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-              color: const Color(0xFFEEEEEE),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'SIZE',
-                    style: GoogleFonts.inter(
-                      fontSize: isSmall ? 8 : 10,
-                      fontWeight: FontWeight.bold,
-                      color: const Color(0xFF555555),
-                    ),
-                  ),
-                  Text(
-                    'PRICE',
-                    style: GoogleFonts.inter(
-                      fontSize: isSmall ? 8 : 10,
-                      fontWeight: FontWeight.bold,
-                      color: const Color(0xFF555555),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            // Expanded row list (no height bounds, no scrolling)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              child: Column(
-                children: sortedSizesList.map((s) {
-                  final priceStr = getSizePriceString(s);
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          s,
-                          style: GoogleFonts.inter(
-                            fontSize: isSmall ? 9 : 12,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.black,
-                          ),
-                        ),
-                        Text(
-                          priceStr,
-                          style: GoogleFonts.inter(
-                            fontSize: isSmall ? 9 : 12,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black,
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }).toList(),
-              ),
-            ),
-          ],
-        ),
-      );
+    if (product.hasBundle) {
+      return _buildBundleView(product.bundle!);
     }
+    // Fallback for products not yet migrated: show legacy size/price info
+    return _buildLegacyFallback();
+  }
 
-    final bool isMobileDevice = Theme.of(context).platform == TargetPlatform.iOS ||
-        Theme.of(context).platform == TargetPlatform.android;
+  Widget _buildBundleView(ProductBundle b) {
+    final labelStyle = GoogleFonts.inter(
+      fontSize: isSmall ? 8.5 : 10,
+      fontWeight: FontWeight.bold,
+      letterSpacing: 0.5,
+      color: const Color(0xFF888888),
+    );
+    final valueStyle = GoogleFonts.inter(
+      fontSize: isSmall ? 10 : 12,
+      fontWeight: FontWeight.w700,
+      color: const Color(0xFF111111),
+    );
 
-    final double rowHeight = isSmall ? 15.0 : 18.5;
-
-    void scrollUpOneRow() {
-      if (!_scrollController.hasClients) return;
-      final target = (_scrollController.offset - rowHeight).clamp(
-        _scrollController.position.minScrollExtent,
-        _scrollController.position.maxScrollExtent,
-      );
-      _scrollController.animateTo(
-        target,
-        duration: const Duration(milliseconds: 200),
-        curve: Curves.easeInOut,
-      );
-    }
-
-    void scrollDownOneRow() {
-      if (!_scrollController.hasClients) return;
-      final target = (_scrollController.offset + rowHeight).clamp(
-        _scrollController.position.minScrollExtent,
-        _scrollController.position.maxScrollExtent,
-      );
-      _scrollController.animateTo(
-        target,
-        duration: const Duration(milliseconds: 200),
-        curve: Curves.easeInOut,
-      );
-    }
-
-    final bool hasScrollExtent = _scrollController.hasClients && _scrollController.position.maxScrollExtent > 0;
-
-    final Widget tableBody = Container(
-      height: isSmall ? 64 : 76,
-      width: double.infinity,
+    return Container(
+      padding: EdgeInsets.all(isSmall ? 8 : 12),
       decoration: BoxDecoration(
-        color: const Color(0xFFF9F9FA),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: const Color(0xFFE5E5E5)),
+        color: const Color(0xFFF5F5F5),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFDDDDDD)),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Sticky Header
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            color: const Color(0xFFEEEEEE),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'SIZE',
+          // Bundle badge + name row
+          Row(
+            children: [
+              Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: isSmall ? 5 : 7,
+                  vertical: isSmall ? 2 : 3,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF111111),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  'BUNDLE',
                   style: GoogleFonts.inter(
-                    fontSize: isSmall ? 7.5 : 9,
+                    fontSize: isSmall ? 7 : 8,
                     fontWeight: FontWeight.bold,
-                    color: const Color(0xFF555555),
+                    letterSpacing: 0.8,
+                    color: Colors.white,
                   ),
                 ),
-                Text(
-                  'PRICE',
+              ),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  b.bundleName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.inter(
-                    fontSize: isSmall ? 7.5 : 9,
-                    fontWeight: FontWeight.bold,
-                    color: const Color(0xFF555555),
+                    fontSize: isSmall ? 9 : 11,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF333333),
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-          // Scrollable rows
-          Expanded(
-            child: Stack(
-              children: [
-                Theme(
-                  data: Theme.of(context).copyWith(
-                    scrollbarTheme: ScrollbarThemeData(
-                      thumbColor: WidgetStateProperty.all(Colors.transparent),
-                      thickness: WidgetStateProperty.all(0.0),
-                      trackColor: WidgetStateProperty.all(Colors.transparent),
-                      trackVisibility: WidgetStateProperty.all(false),
-                    ),
-                  ),
-                  child: Scrollbar(
-                    thumbVisibility: false,
-                    trackVisibility: false,
-                    controller: _scrollController,
-                    child: Listener(
-                      onPointerSignal: (pointerSignal) {
-                        if (pointerSignal is PointerScrollEvent) {
-                          final double rawDelta = pointerSignal.scrollDelta.dy;
-                          if (rawDelta != 0) {
-                            if (!_scrollController.hasClients) return;
-                            final double maxScroll = _scrollController.position.maxScrollExtent;
-                            final double minScroll = _scrollController.position.minScrollExtent;
+          const SizedBox(height: 6),
 
-                            if (maxScroll > 0) {
-                              final double currentOffset = _scrollController.offset;
-                              final double scaledDelta = rawDelta * 0.06;
-                              final double targetOffset = (currentOffset + scaledDelta).clamp(minScroll, maxScroll);
+          // Price per bundle — prominent
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Text(
+                b.priceLabel,
+                style: GoogleFonts.inter(
+                  fontSize: isSmall ? 13 : 16,
+                  fontWeight: FontWeight.w900,
+                  color: const Color(0xFF111111),
+                ),
+              ),
+              const SizedBox(width: 4),
+              Text(
+                '/ bundle',
+                style: GoogleFonts.inter(
+                  fontSize: isSmall ? 8 : 10,
+                  color: const Color(0xFF888888),
+                ),
+              ),
+            ],
+          ),
 
-                              _scrollController.animateTo(
-                                targetOffset,
-                                duration: const Duration(milliseconds: 80),
-                                curve: Curves.easeOut,
-                              );
+          SizedBox(height: isSmall ? 4 : 6),
 
-                              GestureBinding.instance.pointerSignalResolver.register(pointerSignal, (event) {});
-                            }
-                          }
-                        }
-                      },
-                      child: SingleChildScrollView(
-                        controller: _scrollController,
-                        physics: isMobileDevice
-                            ? const BouncingScrollPhysics()
-                            : const AlwaysScrollableScrollPhysics(),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                          child: Column(
-                            children: sortedSizesList.map((s) {
-                              final priceStr = getSizePriceString(s);
+          // Stats row: total pieces + pieces per size
+          Wrap(
+            spacing: isSmall ? 6 : 10,
+            runSpacing: 4,
+            children: [
+              _statChip(
+                label: 'Total Pieces',
+                value: '${b.totalPieces}',
+                isSmall: isSmall,
+                labelStyle: labelStyle,
+                valueStyle: valueStyle,
+              ),
+              _statChip(
+                label: 'Pcs / Size',
+                value: '${b.piecesPerSize}',
+                isSmall: isSmall,
+                labelStyle: labelStyle,
+                valueStyle: valueStyle,
+              ),
+            ],
+          ),
 
-                              return Padding(
-                                padding: const EdgeInsets.symmetric(vertical: 2),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      s,
-                                      style: GoogleFonts.inter(
-                                        fontSize: isSmall ? 8 : 10.5,
-                                        fontWeight: FontWeight.w600,
-                                        color: Colors.black,
-                                      ),
-                                    ),
-                                    Text(
-                                      priceStr,
-                                      style: GoogleFonts.inter(
-                                        fontSize: isSmall ? 8 : 10.5,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.black,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            }).toList(),
-                          ),
-                        ),
-                      ),
-                    ),
+          SizedBox(height: isSmall ? 4 : 6),
+
+          // Sizes breakdown
+          Text('SIZES', style: labelStyle),
+          const SizedBox(height: 3),
+          Wrap(
+            spacing: isSmall ? 4 : 6,
+            runSpacing: 4,
+            children: b.sizes.map((s) {
+              return Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: isSmall ? 5 : 8,
+                  vertical: isSmall ? 2 : 4,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: const Color(0xFFCCCCCC)),
+                ),
+                child: Text(
+                  s,
+                  style: GoogleFonts.inter(
+                    fontSize: isSmall ? 9 : 11,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black,
                   ),
                 ),
-              ],
-            ),
+              );
+            }).toList(),
           ),
         ],
       ),
     );
+  }
 
-    if (hasScrollExtent) {
-      return Row(
-        children: [
-          Expanded(child: tableBody),
-          const SizedBox(width: 4),
-          Container(
-            height: isSmall ? 64 : 76,
-            width: 24,
-            decoration: BoxDecoration(
-              color: const Color(0xFFF0F0F0),
-              borderRadius: BorderRadius.circular(6),
-              border: Border.all(color: const Color(0xFFE5E5E5)),
-            ),
-            child: Column(
-              children: [
-                Expanded(
-                  child: InkWell(
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(5),
-                      topRight: Radius.circular(5),
-                    ),
-                    onTap: _canScrollUp ? scrollUpOneRow : null,
-                    child: Center(
-                      child: Icon(
-                        Icons.keyboard_arrow_up_rounded,
-                        size: 16,
-                        color: _canScrollUp ? Colors.black : Colors.black26,
-                      ),
-                    ),
-                  ),
-                ),
-                const Divider(height: 1, color: Color(0xFFD5D5D5), indent: 4, endIndent: 4),
-                Expanded(
-                  child: InkWell(
-                    borderRadius: const BorderRadius.only(
-                      bottomLeft: Radius.circular(5),
-                      bottomRight: Radius.circular(5),
-                    ),
-                    onTap: _canScrollDown ? scrollDownOneRow : null,
-                    child: Center(
-                      child: Icon(
-                        Icons.keyboard_arrow_down_rounded,
-                        size: 16,
-                        color: _canScrollDown ? Colors.black : Colors.black26,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      );
-    }
+  Widget _statChip({
+    required String label,
+    required String value,
+    required bool isSmall,
+    required TextStyle labelStyle,
+    required TextStyle valueStyle,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: labelStyle),
+        Text(value, style: valueStyle),
+      ],
+    );
+  }
 
-    return tableBody;
+  Widget _buildLegacyFallback() {
+    // Show a simple "Inquiry" or price text for non-migrated products
+    final priceText = product.price.trim().isNotEmpty ? product.price : 'Inquiry';
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Text(
+        priceText,
+        style: GoogleFonts.inter(
+          fontSize: isSmall ? 12 : 14,
+          fontWeight: FontWeight.w700,
+          color: const Color(0xFF111111),
+        ),
+      ),
+    );
   }
 }
+
+// Keep the old name as an alias for any files that still import HZSizePriceTable
+// to prevent compilation errors during the transition.
+// TODO: Remove after all call sites are updated.
+typedef HZSizePriceTable = HZBundleInfoWidget;

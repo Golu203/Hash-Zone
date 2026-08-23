@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -113,22 +114,29 @@ ${_messageController.text.trim()}
               padding: EdgeInsets.symmetric(horizontal: isDesktop ? 32 : 16),
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 1100),
-                child: isDesktop
-                    ? Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(child: _buildStoreInfoCard(context, business)),
-                          const SizedBox(width: 40),
-                          Expanded(child: _buildInquiryForm(context, business)),
-                        ],
-                      )
-                    : Column(
-                        children: [
-                          _buildStoreInfoCard(context, business),
-                          const SizedBox(height: 32),
-                          _buildInquiryForm(context, business),
-                        ],
-                      ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    isDesktop
+                        ? Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(child: _buildStoreInfoCard(context, business)),
+                              const SizedBox(width: 40),
+                              Expanded(child: _buildInquiryForm(context, business)),
+                            ],
+                          )
+                        : Column(
+                            children: [
+                              _buildStoreInfoCard(context, business),
+                              const SizedBox(height: 32),
+                              _buildInquiryForm(context, business),
+                            ],
+                          ),
+                    const SizedBox(height: 56),
+                    _buildLegalQuickLinks(context, isDesktop),
+                  ],
+                ),
               ),
             ),
 
@@ -137,6 +145,88 @@ ${_messageController.text.trim()}
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildLegalQuickLinks(BuildContext context, bool isDesktop) {
+    final links = [
+      {'title': 'Terms & Conditions', 'desc': 'Wholesale bundle terms & sales conditions', 'route': '/terms', 'icon': Icons.description_outlined},
+      {'title': 'Privacy Policy', 'desc': 'Data protection & payment proof confidentiality', 'route': '/privacy', 'icon': Icons.shield_outlined},
+      {'title': 'Refund & Cancellation', 'desc': 'Cancellation rules & 7-working-day refunds', 'route': '/refund-policy', 'icon': Icons.currency_rupee_outlined},
+      {'title': 'Shipping & Delivery', 'desc': 'Tiruppur dispatch, freight & AWB tracking', 'route': '/shipping-policy', 'icon': Icons.local_shipping_outlined},
+      {'title': 'Grievance Redressal', 'desc': 'Statutory grievance officer & SLA matrix', 'route': '/grievance', 'icon': Icons.gavel_outlined},
+      {'title': 'Help & Support FAQs', 'desc': 'Frequently asked wholesale questions', 'route': '/faq', 'icon': Icons.help_outline},
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'LEGAL, POLICIES & GRIEVANCE DESK',
+          style: GoogleFonts.cormorantGaramond(
+            fontSize: isDesktop ? 26 : 22,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 1.5,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'Review our official manufacturer terms, privacy safeguards, return procedures, and grievance mechanisms.',
+          style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF666666)),
+        ),
+        const SizedBox(height: 16),
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: isDesktop ? 3 : 1,
+            crossAxisSpacing: 16,
+            mainAxisSpacing: 16,
+            childAspectRatio: isDesktop ? 2.2 : 2.8,
+          ),
+          itemCount: links.length,
+          itemBuilder: (ctx, i) {
+            final l = links[i];
+            return InkWell(
+              onTap: () => context.push(l['route'] as String),
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFAFAFA),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFEEEEEE)),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.black,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(l['icon'] as IconData, color: Colors.white, size: 18),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(l['title'] as String, style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.black)),
+                          const SizedBox(height: 2),
+                          Text(l['desc'] as String, style: GoogleFonts.inter(fontSize: 11, color: const Color(0xFF666666)), maxLines: 2, overflow: TextOverflow.ellipsis),
+                        ],
+                      ),
+                    ),
+                    const Icon(Icons.arrow_forward_ios, size: 12, color: Colors.black38),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      ],
     );
   }
 

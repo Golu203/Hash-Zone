@@ -332,9 +332,11 @@ class _ProfileCard extends StatelessWidget {
           else ...[
             _infoRow('Name', profile.displayName.isNotEmpty ? profile.displayName : '—'),
             _infoRow('Email', profile.email.isNotEmpty ? profile.email : '—'),
-            _infoRow('Company', profile.companyName.isNotEmpty ? profile.companyName : '—'),
+            if (profile.companyName.isNotEmpty) _infoRow('Company', profile.companyName),
             _infoRow('Mobile', profile.phoneNumber.isNotEmpty ? profile.phoneNumber : '—'),
-            _infoRow('WhatsApp', profile.whatsAppNumber.isNotEmpty ? profile.whatsAppNumber : '—'),
+            if (profile.businessIdType.isNotEmpty && profile.businessIdValue.isNotEmpty)
+              _infoRow('${profile.businessIdType} Number', profile.businessIdValue),
+            if (profile.whatsAppNumber.isNotEmpty) _infoRow('WhatsApp', profile.whatsAppNumber),
           ],
           const SizedBox(height: 24),
           const Divider(color: Color(0xFFEEEEEE)),

@@ -20,7 +20,6 @@ import '../widgets/smart_back_button.dart';
 import '../widgets/size_price_table.dart';
 import '../widgets/quantity_stepper.dart';
 import '../providers/cart_provider.dart';
-import '../providers/customer_auth_provider.dart';
 
 class ProductDetailScreen extends StatefulWidget {
   final String productId;
@@ -449,7 +448,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         HZSizePriceTable(
           product: product,
           isSmall: false,
-          isScrollable: false,
         ),
 
         const SizedBox(height: 24),
@@ -496,17 +494,17 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   children: [
                     Expanded(
                       child: HZQuantityStepper(
-                            product: product,
-                            initialValue: cartQty,
-                            height: 48.0,
-                            isSmall: false,
-                          ),
+                        product: product,
+                        initialValue: cartQty,
+                        height: 48.0,
+                        isSmall: false,
+                      ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: ElevatedButton.icon(
-                        onPressed: () => context.go('/checkout'),
-                        icon: const Icon(Icons.shopping_bag_outlined, color: Colors.white, size: 18),
+                        onPressed: () => context.go('/cart'),
+                        icon: const Icon(Icons.shopping_cart_outlined, color: Colors.white, size: 18),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.black,
                           foregroundColor: Colors.white,
@@ -515,7 +513,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                           elevation: 0,
                         ),
                         label: Text(
-                          'CHECKOUT',
+                          'VIEW CART',
                           style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13, letterSpacing: 0.5),
                         ),
                       ),
@@ -524,73 +522,45 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 );
               }
 
-              return Row(
-                children: [
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: () {
-                        final auth = Provider.of<CustomerAuthProvider>(context, listen: false);
-                        if (!auth.isAuthenticated) {
-                          final currentUri = GoRouterState.of(context).uri.toString();
-                          final redirectTarget = '$currentUri${currentUri.contains('?') ? '&' : '?'}action=buy_now&productId=${product.id}';
-                          context.go('/login?redirect=${Uri.encodeComponent(redirectTarget)}');
-                        } else {
-                          HZProductActionDialog.show(
-                            context,
-                            product: product,
-                            isWhatsApp: false,
-                            isBuyNow: true,
-                          );
-                        }
-                      },
-                      icon: const Icon(Icons.shopping_bag_outlined, color: Colors.white, size: 18),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.black,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                        elevation: 0,
-                      ),
-                      label: Text(
-                        'BUY NOW',
-                        style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13, letterSpacing: 0.5),
-                      ),
-                    ),
+              return SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    final cart = Provider.of<CartProvider>(context, listen: false);
+                    if (product.hasBundle) {
+                      final b = product.bundle!;
+                      cart.addItem(
+                        product,
+                        b.bundleName,
+                        b.bundlePrice,
+                        1,
+                        bundleName: b.bundleName,
+                        bundleSizes: b.sizes,
+                        totalPiecesPerBundle: b.totalPieces,
+                        piecesPerSize: b.piecesPerSize,
+                      );
+                    } else {
+                      final size = product.availableSizes.isNotEmpty
+                          ? product.availableSizes.first
+                          : 'Free Size';
+                      cart.addItem(product, size, product.getActivePriceForSize(size), 1);
+                    }
+                  },
+                  icon: const Icon(Icons.add_shopping_cart, color: Colors.white, size: 18),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.black,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    elevation: 0,
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () {
-                        final auth = Provider.of<CustomerAuthProvider>(context, listen: false);
-                        if (!auth.isAuthenticated) {
-                          final currentUri = GoRouterState.of(context).uri.toString();
-                          final redirectTarget = '$currentUri${currentUri.contains('?') ? '&' : '?'}action=add_to_cart&productId=${product.id}';
-                          context.go('/login?redirect=${Uri.encodeComponent(redirectTarget)}');
-                        } else {
-                          HZProductActionDialog.show(
-                            context,
-                            product: product,
-                            isWhatsApp: false,
-                            isBuyNow: false,
-                          );
-                        }
-                      },
-                      icon: const Icon(Icons.add_shopping_cart, color: Colors.black, size: 18),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.black,
-                        side: const BorderSide(color: Colors.black, width: 1.5),
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                      ),
-                      label: Text(
-                        'ADD TO CART',
-                        style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13, letterSpacing: 0.5),
-                      ),
-                    ),
+                  label: Text(
+                    'ADD TO CART',
+                    style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13, letterSpacing: 0.5),
                   ),
-                ],
+                ),
               );
-            }
+            },
           ),
         ],
 

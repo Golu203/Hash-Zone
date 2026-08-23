@@ -9,11 +9,20 @@ class CartItem {
   final String productId;
   final String title;
   final String imageUrl;
+  // For bundle items: stores the bundle name. For legacy: stores the size.
   final String size;
+  // For bundle items: price per bundle. For legacy: price per piece.
   final double price;
+  // For bundle items: number of bundles. For legacy: number of pieces.
   final int quantity;
   final String productUrl;
   final String sku;
+
+  // ─── Bundle fields (null for legacy items) ──────────────────────────────
+  final String? bundleName;
+  final List<String>? bundleSizes;
+  final int? totalPiecesPerBundle;
+  final int? piecesPerSize;
 
   CartItem({
     required this.productId,
@@ -24,7 +33,17 @@ class CartItem {
     required this.quantity,
     required this.productUrl,
     required this.sku,
+    this.bundleName,
+    this.bundleSizes,
+    this.totalPiecesPerBundle,
+    this.piecesPerSize,
   });
+
+  bool get isBundleItem => bundleName != null && bundleName!.isNotEmpty;
+
+  /// Total physical pieces in this cart line
+  int get totalPieces =>
+      isBundleItem ? (totalPiecesPerBundle ?? 0) * quantity : quantity;
 
   CartItem copyWith({
     String? productId,
@@ -35,6 +54,10 @@ class CartItem {
     int? quantity,
     String? productUrl,
     String? sku,
+    String? bundleName,
+    List<String>? bundleSizes,
+    int? totalPiecesPerBundle,
+    int? piecesPerSize,
   }) {
     return CartItem(
       productId: productId ?? this.productId,
@@ -45,6 +68,10 @@ class CartItem {
       quantity: quantity ?? this.quantity,
       productUrl: productUrl ?? this.productUrl,
       sku: sku ?? this.sku,
+      bundleName: bundleName ?? this.bundleName,
+      bundleSizes: bundleSizes ?? this.bundleSizes,
+      totalPiecesPerBundle: totalPiecesPerBundle ?? this.totalPiecesPerBundle,
+      piecesPerSize: piecesPerSize ?? this.piecesPerSize,
     );
   }
 
@@ -58,10 +85,15 @@ class CartItem {
       'quantity': quantity,
       'productUrl': productUrl,
       'sku': sku,
+      if (bundleName != null) 'bundleName': bundleName,
+      if (bundleSizes != null) 'bundleSizes': bundleSizes,
+      if (totalPiecesPerBundle != null) 'totalPiecesPerBundle': totalPiecesPerBundle,
+      if (piecesPerSize != null) 'piecesPerSize': piecesPerSize,
     };
   }
 
   factory CartItem.fromMap(Map<String, dynamic> map) {
+    final rawBundleSizes = map['bundleSizes'];
     return CartItem(
       productId: map['productId'] ?? '',
       title: map['title'] ?? '',
@@ -71,6 +103,10 @@ class CartItem {
       quantity: map['quantity'] ?? 1,
       productUrl: map['productUrl'] ?? '',
       sku: map['sku'] ?? '',
+      bundleName: map['bundleName'] as String?,
+      bundleSizes: rawBundleSizes != null ? List<String>.from(rawBundleSizes as List) : null,
+      totalPiecesPerBundle: (map['totalPiecesPerBundle'] as num?)?.toInt(),
+      piecesPerSize: (map['piecesPerSize'] as num?)?.toInt(),
     );
   }
 }
@@ -88,36 +124,37 @@ class CartProvider extends ChangeNotifier {
 
   // ── Auth wiring ─────────────────────────────────────────────────────────────
   /// Called by main.dart listener when user signs in.
-  /// Merges local cart with Firestore cart and starts syncing.
+  /// If the guest already added items to their cart, those items become the active
+  /// checkout cart and are synced to Firestore (no unwanted merging with older carts).
+  /// If the cart was empty, load the customer's saved Firestore cart.
   Future<void> attachUser(String uid) async {
     _uid = uid;
-    // Load Firestore cart
-    final firestoreItems = await _firestoreCart.loadCart(uid);
     
-    if (firestoreItems.isNotEmpty) {
-      // Merge: Firestore wins for existing items; local-only items are added
-      final merged = List<CartItem>.from(firestoreItems);
-      for (final localItem in _items) {
-        final exists = merged.any(
-          (fi) => fi.productId == localItem.productId && fi.size == localItem.size,
-        );
-        if (!exists) merged.add(localItem);
-      }
-      _items = merged;
-    } else if (_items.isNotEmpty) {
-      // No Firestore cart yet — push local items to Firestore
+    if (_items.isNotEmpty) {
+      // Guest cart takes priority for this checkout session: sync it to Firestore
       await _firestoreCart.syncCart(uid, _items);
+    } else {
+      // Direct login without a guest cart: load customer's saved cart from Firestore
+      final firestoreItems = await _firestoreCart.loadCart(uid);
+      if (firestoreItems.isNotEmpty) {
+        _items = firestoreItems;
+      }
     }
 
+    await _saveCart();
     notifyListeners();
   }
 
   /// Called when user signs out.
-  void detachUser() {
+  /// Starts a completely fresh, isolated guest session with an empty cart.
+  Future<void> detachUser() async {
     _uid = null;
     _items = [];
     notifyListeners();
-    _loadCart(); // reload local prefs for guest session
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('hashzone_cart');
+    } catch (_) {}
   }
 
   // ── Computed ────────────────────────────────────────────────────────────────
@@ -194,12 +231,24 @@ class CartProvider extends ChangeNotifier {
     }
   }
 
-  void addItem(Product product, String size, double price, int quantity) {
+  void addItem(
+    Product product,
+    String size,
+    double price,
+    int quantity, {
+    String? bundleName,
+    List<String>? bundleSizes,
+    int? totalPiecesPerBundle,
+    int? piecesPerSize,
+  }) {
     final domain = Uri.base.origin;
     final productUrl = '$domain/#/product/${product.slug}';
 
+    // Bundle items key on productId only (one bundle config per product)
+    // Legacy items key on (productId, size)
+    final effectiveSize = bundleName ?? size;
     final existingIndex = _items.indexWhere(
-      (item) => item.productId == product.id && item.size == size,
+      (item) => item.productId == product.id && item.size == effectiveSize,
     );
 
     final isNewItemOrSize = (existingIndex == -1);
@@ -213,18 +262,25 @@ class CartProvider extends ChangeNotifier {
         productId: product.id,
         title: product.title,
         imageUrl: product.coverImageUrl,
-        size: size,
+        size: effectiveSize,
         price: price,
         quantity: quantity,
         productUrl: productUrl,
         sku: product.sku,
+        bundleName: bundleName,
+        bundleSizes: bundleSizes,
+        totalPiecesPerBundle: totalPiecesPerBundle,
+        piecesPerSize: piecesPerSize,
       ));
     }
     notifyListeners();
     _saveCart();
 
     if (isNewItemOrSize) {
-      HZCartNotification.showItemAdded(product.title, size: size);
+      HZCartNotification.showItemAdded(
+        product.title,
+        size: bundleName != null ? '$bundleName (×$quantity bundles)' : size,
+      );
     }
   }
 
@@ -329,8 +385,19 @@ class CartProvider extends ChangeNotifier {
       for (var item in itemsList) {
         final double lineTotal = item.price * item.quantity;
         productTotal += lineTotal;
-        buffer.writeln(
-            '   • Size ${item.size} × ${item.quantity} (₹${item.price.toStringAsFixed(0)} each) = ₹${lineTotal.toStringAsFixed(0)}');
+        if (item.isBundleItem) {
+          // Bundle display
+          final sizes = item.bundleSizes?.join(', ') ?? item.bundleName ?? '';
+          final pieces = item.totalPiecesPerBundle ?? 0;
+          buffer.writeln(
+              '   • Bundle: ${item.bundleName} (${item.quantity} × $pieces pcs = ${item.totalPieces} pcs)');
+          buffer.writeln(
+              '     Sizes: $sizes | ₹${item.price.toStringAsFixed(0)}/bundle × ${item.quantity} = ₹${lineTotal.toStringAsFixed(0)}');
+        } else {
+          // Legacy size display
+          buffer.writeln(
+              '   • Size ${item.size} × ${item.quantity} (₹${item.price.toStringAsFixed(0)} each) = ₹${lineTotal.toStringAsFixed(0)}');
+        }
       }
 
       buffer.writeln('   *Product Total: ₹${productTotal.toStringAsFixed(0)}*');
