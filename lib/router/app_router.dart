@@ -45,7 +45,10 @@ import '../screens/dashboard/customer_dashboard_screen.dart';
 import '../screens/dashboard/profile_edit_screen.dart';
 import '../screens/dashboard/address_management_screen.dart';
 
+final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
+
 final appRouter = GoRouter(
+  navigatorKey: rootNavigatorKey,
   initialLocation: '/',
   errorBuilder: (context, state) => ErrorScreen(message: state.error?.toString()),
   redirect: (context, state) {
