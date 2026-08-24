@@ -179,26 +179,11 @@ class _HZQuantityStepperState extends State<HZQuantityStepper> {
 
   @override
   Widget build(BuildContext context) {
-    return Focus(
-      onKeyEvent: (node, event) {
-        if (event is KeyDownEvent) {
-          if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
-            _increment();
-            return KeyEventResult.handled;
-          } else if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
-            if (_currentVal > 0) {
-              _decrement();
-              return KeyEventResult.handled;
-            }
-          }
-        }
-        return KeyEventResult.ignored;
-      },
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Stepper Input Row
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Stepper Input Row
           SizedBox(
             width: widget.isFullWidth ? double.infinity : (widget.isSmall ? 100 : 130),
             child: Container(
@@ -349,7 +334,6 @@ class _HZQuantityStepperState extends State<HZQuantityStepper> {
             ),
           ],
         ],
-      ),
-    );
+      );
   }
 }

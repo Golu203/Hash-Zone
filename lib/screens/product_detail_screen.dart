@@ -211,6 +211,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       appBar: const HZNavBar(),
       endDrawer: !isDesktop ? const HZMobileDrawer() : null,
       body: SingleChildScrollView(
+        primary: true,
         child: Column(
           children: [
             // Breadcrumbs Navigation
