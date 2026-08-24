@@ -38,9 +38,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri);
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Call store at $phoneNumber')),
-      );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Call store at $phoneNumber')),
+        );
+      }
     }
   }
 
