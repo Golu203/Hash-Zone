@@ -839,20 +839,16 @@ class AboutScreen extends StatelessWidget {
       }
     });
 
-    // Tight focus on Indian mainland (covers 8.0N to 35.8N, 68.5E to 97.3E) with minimal surround visible
-    var indiaBounds = [
-      [8.0, 68.5],
-      [35.8, 97.3]
-    ];
-    map.fitBounds(indiaBounds, { padding: [5, 5] });
-    setTimeout(function() {
-      var currentZoom = map.getZoom();
-      map.setZoom(currentZoom + 1);
-      
-      // Shift initial center very slightly to the left (-4.0 degrees West)
-      var newCenter = map.getCenter();
-      map.setView([newCenter.lat, newCenter.lng - 4.0], currentZoom + 1);
-    }, 50);
+    function setIndiaView() {
+      map.invalidateSize();
+      // Center tightly on India (lat 17.5 N, lng 79.0 E, zoom 5) so India fits specifically and vertically
+      map.setView([17.5, 79.0], 5);
+    }
+
+    setIndiaView();
+    window.addEventListener('load', setIndiaView);
+    window.addEventListener('resize', setIndiaView);
+    setTimeout(setIndiaView, 250);
   </script>
 </body>
 </html>

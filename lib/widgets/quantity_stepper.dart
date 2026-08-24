@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../models/product.dart';
@@ -13,10 +14,9 @@ class HZQuantityStepper extends StatefulWidget {
   final double height;
   final bool isFullWidth;
   final bool showNote;
-  /// Step size for increment/decrement. Default 5 (legacy wholesale).
-  /// Pass 1 for bundle ordering (each bundle is the minimum unit).
+  /// Step size for increment/decrement. Default 1 (bundle ordering).
   final int step;
-  /// Minimum valid value. Default 5 for legacy, 1 for bundles.
+  /// Minimum valid value. Default 1 (bundle ordering).
   final int minValue;
 
   const HZQuantityStepper({
@@ -30,9 +30,9 @@ class HZQuantityStepper extends StatefulWidget {
     this.height = 36.0,
     this.isFullWidth = false,
     this.showNote = true,
-    this.step = 5,
-    this.minValue = 5,
-  }) : initialValue = initialValue ?? value ?? 5;
+    this.step = 1,
+    this.minValue = 1,
+  }) : initialValue = initialValue ?? value ?? 1;
 
   @override
   State<HZQuantityStepper> createState() => _HZQuantityStepperState();
@@ -179,147 +179,177 @@ class _HZQuantityStepperState extends State<HZQuantityStepper> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // Stepper Input Row
-        SizedBox(
-          width: widget.isFullWidth ? double.infinity : (widget.isSmall ? 100 : 130),
-          child: Container(
-            height: widget.height,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(6),
-              border: Border.all(
-                color: _errorText != null ? Colors.red.shade700 : Colors.black,
-                width: 1.5,
+    return Focus(
+      onKeyEvent: (node, event) {
+        if (event is KeyDownEvent) {
+          if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
+            _increment();
+            return KeyEventResult.handled;
+          } else if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+            if (_currentVal > 0) {
+              _decrement();
+              return KeyEventResult.handled;
+            }
+          }
+        }
+        return KeyEventResult.ignored;
+      },
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Stepper Input Row
+          SizedBox(
+            width: widget.isFullWidth ? double.infinity : (widget.isSmall ? 100 : 130),
+            child: Container(
+              height: widget.height,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(
+                  color: _errorText != null ? Colors.red.shade700 : Colors.black,
+                  width: 1.5,
+                ),
               ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                // Minus Button
-                Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: _currentVal > 0 ? _decrement : null,
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(5),
-                      bottomLeft: Radius.circular(5),
-                    ),
-                    child: SizedBox(
-                      width: widget.isSmall ? 28 : 36,
-                      height: double.infinity,
-                      child: Icon(
-                        Icons.remove,
-                        size: widget.isSmall ? 14 : 16,
-                        color: _currentVal > 0 ? Colors.black : Colors.black26,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  // Minus Button
+                  Semantics(
+                    button: true,
+                    label: widget.step == 1 ? 'Decrease bundle quantity' : 'Decrease quantity',
+                    child: Tooltip(
+                      message: widget.step == 1 ? 'Decrease bundle quantity' : 'Decrease quantity',
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: _currentVal > 0 ? _decrement : null,
+                          borderRadius: const BorderRadius.only(
+                            topLeft: Radius.circular(5),
+                            bottomLeft: Radius.circular(5),
+                          ),
+                          child: SizedBox(
+                            width: widget.isSmall ? 28 : 36,
+                            height: double.infinity,
+                            child: Icon(
+                              Icons.remove,
+                              size: widget.isSmall ? 14 : 16,
+                              color: _currentVal > 0 ? Colors.black : Colors.black26,
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                   ),
-                ),
-                // Editable Text Field
-                Expanded(
-                  child: TextField(
-                    controller: _controller,
-                    focusNode: _focusNode,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: false, signed: false),
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.inter(
-                      fontSize: widget.isSmall ? 12 : 14,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black,
-                    ),
-                    decoration: const InputDecoration(
-                      isDense: true,
-                      contentPadding: EdgeInsets.zero,
-                      border: InputBorder.none,
-                    ),
-                    onChanged: (text) {
-                      final trimmed = text.trim();
-                      final s = widget.step;
-                      final minV = widget.minValue;
-                      if (trimmed.isEmpty) {
-                        setState(() {
-                          _errorText = s == 1
-                              ? 'Please enter a valid quantity (minimum $minV).'
-                              : 'HashZone accepts wholesale orders only in multiples of $s pieces.';
-                        });
-                        _performUpdate(_currentVal, false);
-                        return;
-                      }
-                      final val = int.tryParse(trimmed);
-                      if (val == null || val < minV || (s > 1 && val % s != 0)) {
-                        setState(() {
-                          _errorText = s == 1
-                              ? 'Please enter a valid quantity (minimum $minV).'
-                              : 'HashZone accepts wholesale orders only in multiples of $s pieces.';
-                        });
-                        _performUpdate(val ?? 0, false);
-                      } else {
-                        setState(() {
-                          _errorText = null;
-                          _currentVal = val;
-                        });
-                        _performUpdate(val, true);
-                      }
-                    },
-                    onSubmitted: (_) => _validateAndSubmit(),
-                  ),
-                ),
-                // Plus Button
-                Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: _increment,
-                    borderRadius: const BorderRadius.only(
-                      topRight: Radius.circular(5),
-                      bottomRight: Radius.circular(5),
-                    ),
-                    child: SizedBox(
-                      width: widget.isSmall ? 28 : 36,
-                      height: double.infinity,
-                      child: Icon(
-                        Icons.add,
-                        size: widget.isSmall ? 14 : 16,
+                  // Editable Text Field
+                  Expanded(
+                    child: TextField(
+                      controller: _controller,
+                      focusNode: _focusNode,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: false, signed: false),
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.inter(
+                        fontSize: widget.isSmall ? 12 : 14,
+                        fontWeight: FontWeight.bold,
                         color: Colors.black,
                       ),
+                      decoration: const InputDecoration(
+                        isDense: true,
+                        contentPadding: EdgeInsets.zero,
+                        border: InputBorder.none,
+                      ),
+                      onChanged: (text) {
+                        final trimmed = text.trim();
+                        final s = widget.step;
+                        final minV = widget.minValue;
+                        if (trimmed.isEmpty) {
+                          setState(() {
+                            _errorText = s == 1
+                                ? 'Please enter a valid quantity (minimum $minV).'
+                                : 'HashZone accepts wholesale orders only in multiples of $s pieces.';
+                          });
+                          _performUpdate(_currentVal, false);
+                          return;
+                        }
+                        final val = int.tryParse(trimmed);
+                        if (val == null || val < minV || (s > 1 && val % s != 0)) {
+                          setState(() {
+                            _errorText = s == 1
+                                ? 'Please enter a valid quantity (minimum $minV).'
+                                : 'HashZone accepts wholesale orders only in multiples of $s pieces.';
+                          });
+                          _performUpdate(val ?? 0, false);
+                        } else {
+                          setState(() {
+                            _errorText = null;
+                            _currentVal = val;
+                          });
+                          _performUpdate(val, true);
+                        }
+                      },
+                      onSubmitted: (_) => _validateAndSubmit(),
                     ),
                   ),
-                ),
-              ],
+                  // Plus Button
+                  Semantics(
+                    button: true,
+                    label: widget.step == 1 ? 'Increase bundle quantity' : 'Increase quantity',
+                    child: Tooltip(
+                      message: widget.step == 1 ? 'Increase bundle quantity' : 'Increase quantity',
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: _increment,
+                          borderRadius: const BorderRadius.only(
+                            topRight: Radius.circular(5),
+                            bottomRight: Radius.circular(5),
+                          ),
+                          child: SizedBox(
+                            width: widget.isSmall ? 28 : 36,
+                            height: double.infinity,
+                            child: Icon(
+                              Icons.add,
+                              size: widget.isSmall ? 14 : 16,
+                              color: Colors.black,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-        ),
-        // Information Note
-        if (widget.showNote && !widget.isSmall) ...[
-          const SizedBox(height: 8),
-          Text(
-            widget.step == 1
-                ? 'Each unit is 1 complete bundle (contains ${widget.minValue > 1 ? widget.minValue.toString() + "+ pieces" : "all sizes & pieces"}).'
-                : 'HashZone is a wholesale supplier. Orders are accepted only in multiples of ${widget.step} pieces (${widget.step}, ${widget.step * 2}, ${widget.step * 3}...).',
-            style: GoogleFonts.inter(
-              fontSize: 10,
-              fontWeight: FontWeight.w500,
-              color: Colors.black54,
-              height: 1.3,
+          // Information Note
+          if (widget.showNote && !widget.isSmall) ...[
+            const SizedBox(height: 8),
+            Text(
+              widget.step == 1
+                  ? 'Wholesale orders are placed by bundle. Each bundle contains the sizes and quantities shown above.'
+                  : 'HashZone is a wholesale supplier. Orders are accepted only in multiples of ${widget.step} pieces (${widget.step}, ${widget.step * 2}, ${widget.step * 3}...).',
+              style: GoogleFonts.inter(
+                fontSize: 10,
+                fontWeight: FontWeight.w500,
+                color: Colors.black54,
+                height: 1.3,
+              ),
             ),
-          ),
+          ],
+          if (_errorText != null) ...[
+            const SizedBox(height: 6),
+            Text(
+              _errorText!,
+              style: GoogleFonts.inter(
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+                color: Colors.red.shade700,
+                height: 1.3,
+              ),
+            ),
+          ],
         ],
-        if (_errorText != null) ...[
-          const SizedBox(height: 6),
-          Text(
-            _errorText!,
-            style: GoogleFonts.inter(
-              fontSize: 10,
-              fontWeight: FontWeight.bold,
-              color: Colors.red.shade700,
-              height: 1.3,
-            ),
-          ),
-        ],
-      ],
+      ),
     );
   }
 }

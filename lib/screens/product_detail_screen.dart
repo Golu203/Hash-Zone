@@ -231,24 +231,70 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     const SizedBox(width: 8),
                     InkWell(
                       onTap: () => context.go('/'),
-                      child: Text('HOME', style: GoogleFonts.inter(fontSize: 11, color: Colors.white54)),
+                      borderRadius: BorderRadius.circular(4),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                        child: Text('HOME', style: GoogleFonts.inter(fontSize: 11, color: Colors.white54, fontWeight: FontWeight.w500)),
+                      ),
                     ),
                     const Text('  /  ', style: TextStyle(color: Colors.white24, fontSize: 11)),
                     InkWell(
-                      onTap: () => context.go('/products'),
-                      child: Text('CATALOG', style: GoogleFonts.inter(fontSize: 11, color: Colors.white54)),
+                      onTap: () {
+                        final cat = Provider.of<CatalogProvider>(context, listen: false);
+                        cat.clearFilters();
+                        context.go('/products');
+                      },
+                      borderRadius: BorderRadius.circular(4),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                        child: Text('PRODUCTS', style: GoogleFonts.inter(fontSize: 11, color: Colors.white54, fontWeight: FontWeight.w500)),
+                      ),
                     ),
-                    const Text('  /  ', style: TextStyle(color: Colors.white24, fontSize: 11)),
-                    Text(
-                      deptName.toUpperCase(),
-                      style: GoogleFonts.inter(fontSize: 11, color: Colors.white54),
-                    ),
+                    if (product.departmentId.isNotEmpty) ...[
+                      const Text('  /  ', style: TextStyle(color: Colors.white24, fontSize: 11)),
+                      InkWell(
+                        onTap: () {
+                          final cat = Provider.of<CatalogProvider>(context, listen: false);
+                          cat.setDepartmentFilter(product!.departmentId);
+                          context.go('/products');
+                        },
+                        borderRadius: BorderRadius.circular(4),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                          child: Text(
+                            deptName.toUpperCase(),
+                            style: GoogleFonts.inter(fontSize: 11, color: Colors.white70, fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ),
+                    ],
+                    if (product.categoryId.isNotEmpty) ...[
+                      const Text('  /  ', style: TextStyle(color: Colors.white24, fontSize: 11)),
+                      InkWell(
+                        onTap: () {
+                          final cat = Provider.of<CatalogProvider>(context, listen: false);
+                          if (product!.departmentId.isNotEmpty) {
+                            cat.setDepartmentFilter(product.departmentId);
+                          }
+                          cat.setCategoryFilter(product.categoryId);
+                          context.go('/products');
+                        },
+                        borderRadius: BorderRadius.circular(4),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                          child: Text(
+                            categoryName.toUpperCase(),
+                            style: GoogleFonts.inter(fontSize: 11, color: Colors.white70, fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ),
+                    ],
                     const Text('  /  ', style: TextStyle(color: Colors.white24, fontSize: 11)),
                     Text(
                       product.title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.inter(fontSize: 11, color: Colors.white),
+                      style: GoogleFonts.inter(fontSize: 11, color: Colors.white, fontWeight: FontWeight.bold),
                     ),
                   ],
                 ),
@@ -498,6 +544,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         initialValue: cartQty,
                         height: 48.0,
                         isSmall: false,
+                        step: 1,
+                        minValue: 1,
                       ),
                     ),
                     const SizedBox(width: 12),
