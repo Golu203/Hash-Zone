@@ -132,17 +132,15 @@ class _HashZoneAppState extends State<HashZoneApp> {
     final navContext = rootNavigatorKey.currentContext ?? rootScaffoldMessengerKey.currentContext;
     if (navContext == null) return false;
 
-    ScrollableState? targetScrollable;
+    final List<ScrollableState> candidates = [];
     void visitor(Element element) {
-      if (targetScrollable != null) return;
       if (element.widget is Scrollable) {
         final state = (element as StatefulElement).state;
         if (state is ScrollableState &&
             state.position.hasPixels &&
             state.position.maxScrollExtent > 0 &&
-            state.axisDirection == AxisDirection.down) {
-          targetScrollable = state;
-          return;
+            (state.axisDirection == AxisDirection.down || state.axisDirection == AxisDirection.up)) {
+          candidates.add(state);
         }
       }
       element.visitChildren(visitor);
@@ -150,32 +148,36 @@ class _HashZoneAppState extends State<HashZoneApp> {
 
     navContext.visitChildElements(visitor);
 
-    if (targetScrollable != null && targetScrollable!.position.hasPixels) {
-      final position = targetScrollable!.position;
-      double delta = 0.0;
-      if (isArrowDown) {
-        delta = 90.0;
-      } else if (isArrowUp) {
-        delta = -90.0;
-      } else if (isPageDown) {
-        delta = position.viewportDimension * 0.85;
-      } else if (isPageUp) {
-        delta = -position.viewportDimension * 0.85;
-      }
+    if (candidates.isEmpty) return false;
 
-      final targetPixels = (position.pixels + delta).clamp(
-        position.minScrollExtent,
-        position.maxScrollExtent,
+    // Pick the primary scroll container (largest viewport dimension = main page body)
+    candidates.sort((a, b) => b.position.viewportDimension.compareTo(a.position.viewportDimension));
+    final targetScrollable = candidates.first;
+
+    final position = targetScrollable.position;
+    double delta = 0.0;
+    if (isArrowDown) {
+      delta = 90.0;
+    } else if (isArrowUp) {
+      delta = -90.0;
+    } else if (isPageDown) {
+      delta = position.viewportDimension * 0.85;
+    } else if (isPageUp) {
+      delta = -position.viewportDimension * 0.85;
+    }
+
+    final targetPixels = (position.pixels + delta).clamp(
+      position.minScrollExtent,
+      position.maxScrollExtent,
+    );
+
+    if ((targetPixels - position.pixels).abs() > 0.5) {
+      position.animateTo(
+        targetPixels,
+        duration: const Duration(milliseconds: 90),
+        curve: Curves.easeOutQuad,
       );
-
-      if ((targetPixels - position.pixels).abs() > 0.5) {
-        position.animateTo(
-          targetPixels,
-          duration: const Duration(milliseconds: 90),
-          curve: Curves.easeOutQuad,
-        );
-        return true;
-      }
+      return true;
     }
 
     return false;
