@@ -32,6 +32,7 @@ import '../screens/legal/refund_policy_screen.dart';
 import '../screens/legal/shipping_policy_screen.dart';
 import '../screens/legal/grievance_redressal_screen.dart';
 import '../services/auth_service.dart';
+import '../services/admin_session_service.dart';
 import '../providers/business_provider.dart';
 import '../providers/customer_auth_provider.dart';
 import '../screens/cart_screen.dart';
@@ -56,13 +57,14 @@ final appRouter = GoRouter(
 
     // ── Admin Auth Guard ─────────────────────────────────────────────────────
     final isGoingToAdmin = location.startsWith('/admin');
-    final isGoingToAdminLogin = location == '/admin/login';
+    final isGoingToAdminLogin = location.startsWith('/admin/login');
     final adminService = AuthService();
     final adminUser = adminService.currentUser;
-    // Admin must be authenticated AND have an @hashzone.com or @hashzone.co.in email
+    // Admin must be authenticated AND have an @hashzone.com or @hashzone.co.in email AND have completed 2FA
     final isAdminAuthenticated = adminUser != null &&
         ((adminUser.email?.endsWith('@hashzone.com') ?? false) ||
-         (adminUser.email?.endsWith('@hashzone.co.in') ?? false));
+         (adminUser.email?.endsWith('@hashzone.co.in') ?? false)) &&
+        adminService.is2FAVerified;
 
     if (isGoingToAdmin && !isGoingToAdminLogin && !isAdminAuthenticated) {
       return '/admin/login';
@@ -250,78 +252,87 @@ final appRouter = GoRouter(
     ),
 
 
-    // ── Admin Portal Routes (unchanged) ───────────────────────────────────────
+    // ── Admin Portal Routes ──────────────────────────────────────────────────
     GoRoute(
       path: '/admin',
       redirect: (context, state) =>
-          AuthService().isAuthenticated ? '/admin/dashboard' : '/admin/login',
+          (AuthService().isAuthenticated && AuthService().is2FAVerified)
+              ? '/admin/dashboard'
+              : '/admin/login',
     ),
     GoRoute(
       path: '/admin/login',
-      builder: (context, state) => const AdminLoginScreen(),
+      builder: (context, state) => AdminLoginScreen(
+        reason: state.uri.queryParameters['reason'],
+      ),
     ),
-    GoRoute(
-      path: '/admin/dashboard',
-      builder: (context, state) => const AdminDashboardScreen(),
-    ),
-    GoRoute(
-      path: '/admin/products',
-      builder: (context, state) => const AdminProductsScreen(),
-    ),
-    GoRoute(
-      path: '/admin/products/new',
-      builder: (context, state) => const AdminProductEditScreen(),
-    ),
-    GoRoute(
-      path: '/admin/products/edit/:id',
-      builder: (context, state) {
-        final id = state.pathParameters['id'] ?? '';
-        return AdminProductEditScreen(productId: id);
-      },
-    ),
-    GoRoute(
-      path: '/admin/taxonomy',
-      builder: (context, state) => const AdminTaxonomyScreen(),
-    ),
-    GoRoute(
-      path: '/admin/banners',
-      builder: (context, state) => const AdminBannersScreen(),
-    ),
-    GoRoute(
-      path: '/admin/settings',
-      builder: (context, state) => const AdminSettingsScreen(),
-    ),
-    GoRoute(
-      path: '/admin/manual',
-      builder: (context, state) => const AdminUserManualScreen(),
-    ),
-    GoRoute(
-      path: '/admin/supply-network',
-      builder: (context, state) => const AdminSupplyNetworkScreen(),
-    ),
-    GoRoute(
-      path: '/admin/payment-config',
-      builder: (context, state) => const AdminPaymentConfigScreen(),
-    ),
-    GoRoute(
-      path: '/admin/payment-verification',
-      builder: (context, state) => const AdminPaymentVerificationScreen(),
-    ),
-    GoRoute(
-      path: '/admin/developer-testing',
-      builder: (context, state) => const AdminDeveloperTestingScreen(),
-    ),
-    GoRoute(
-      path: '/admin/orders',
-      builder: (context, state) => const AdminOrdersScreen(),
-    ),
-    GoRoute(
-      path: '/admin/backup-recovery',
-      builder: (context, state) => const AdminBackupRecoveryScreen(),
-    ),
-    GoRoute(
-      path: '/admin/bundle-options',
-      builder: (context, state) => const AdminBundleOptionsScreen(),
+    ShellRoute(
+      builder: (context, state, child) => AdminInactivityWrapper(child: child),
+      routes: [
+        GoRoute(
+          path: '/admin/dashboard',
+          builder: (context, state) => const AdminDashboardScreen(),
+        ),
+        GoRoute(
+          path: '/admin/products',
+          builder: (context, state) => const AdminProductsScreen(),
+        ),
+        GoRoute(
+          path: '/admin/products/new',
+          builder: (context, state) => const AdminProductEditScreen(),
+        ),
+        GoRoute(
+          path: '/admin/products/edit/:id',
+          builder: (context, state) {
+            final id = state.pathParameters['id'] ?? '';
+            return AdminProductEditScreen(productId: id);
+          },
+        ),
+        GoRoute(
+          path: '/admin/taxonomy',
+          builder: (context, state) => const AdminTaxonomyScreen(),
+        ),
+        GoRoute(
+          path: '/admin/banners',
+          builder: (context, state) => const AdminBannersScreen(),
+        ),
+        GoRoute(
+          path: '/admin/settings',
+          builder: (context, state) => const AdminSettingsScreen(),
+        ),
+        GoRoute(
+          path: '/admin/manual',
+          builder: (context, state) => const AdminUserManualScreen(),
+        ),
+        GoRoute(
+          path: '/admin/supply-network',
+          builder: (context, state) => const AdminSupplyNetworkScreen(),
+        ),
+        GoRoute(
+          path: '/admin/payment-config',
+          builder: (context, state) => const AdminPaymentConfigScreen(),
+        ),
+        GoRoute(
+          path: '/admin/payment-verification',
+          builder: (context, state) => const AdminPaymentVerificationScreen(),
+        ),
+        GoRoute(
+          path: '/admin/developer-testing',
+          builder: (context, state) => const AdminDeveloperTestingScreen(),
+        ),
+        GoRoute(
+          path: '/admin/orders',
+          builder: (context, state) => const AdminOrdersScreen(),
+        ),
+        GoRoute(
+          path: '/admin/backup-recovery',
+          builder: (context, state) => const AdminBackupRecoveryScreen(),
+        ),
+        GoRoute(
+          path: '/admin/bundle-options',
+          builder: (context, state) => const AdminBundleOptionsScreen(),
+        ),
+      ],
     ),
   ],
 );

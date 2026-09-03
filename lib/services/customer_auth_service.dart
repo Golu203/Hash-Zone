@@ -17,6 +17,14 @@ class CustomerAuthService {
 
   // ── Email / Password Sign-Up ────────────────────────────────────────────────
   Future<UserCredential> signUpWithEmail(String email, String password) async {
+    final cleanEmail = email.trim().toLowerCase();
+    if (cleanEmail.endsWith('@hashzone.com') || cleanEmail.endsWith('@hashzone.co.in')) {
+      throw FirebaseAuthException(
+        code: 'operation-not-allowed',
+        message: 'Company domain addresses cannot be used for public customer accounts.',
+      );
+    }
+
     final credential = await _auth.createUserWithEmailAndPassword(
       email: email.trim(),
       password: password.trim(),

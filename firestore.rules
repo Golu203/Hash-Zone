@@ -2,151 +2,198 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // ── Global Security & Validity Helpers ─────────────────────────────────
+    // Valid until September 3, 2046
+    function isValidDate() {
+      return request.time < timestamp.date(2046, 9, 3);
+    }
+
+    function isAuthenticated() {
+      return isValidDate() && request.auth != null;
+    }
+
     function isAdmin() {
-      return request.auth != null &&
+      return isAuthenticated() &&
              request.auth.token != null &&
              'email' in request.auth.token &&
              request.auth.token.email != null &&
              (request.auth.token.email.matches('^.+@(hashzone[.]com|hashzone[.]co[.]in)$'));
     }
 
-    // ── Public Catalog Data (readable by everyone) ─────────────────────────
+    function isOwner(uid) {
+      return isAuthenticated() && request.auth.uid == uid;
+    }
+
+    // ── Public Catalog Data (World readable, Admin writeable) ───────────────
     match /departments/{docId} {
-      allow read: if true;
-      allow write: if request.auth != null;
+      allow read: if isValidDate();
+      allow write: if isAdmin();
     }
     match /categories/{docId} {
-      allow read: if true;
-      allow write: if request.auth != null;
+      allow read: if isValidDate();
+      allow write: if isAdmin();
     }
     match /subcategories/{docId} {
-      allow read: if true;
-      allow write: if request.auth != null;
+      allow read: if isValidDate();
+      allow write: if isAdmin();
     }
     match /products/{docId} {
-      allow read: if true;
-      allow write: if request.auth != null;
+      allow read: if isValidDate();
+      allow write: if isAdmin();
     }
     match /hero_banners/{docId} {
-      allow read: if true;
-      allow write: if request.auth != null;
+      allow read: if isValidDate();
+      allow write: if isAdmin();
     }
     match /bundleOptions/{docId} {
-      allow read: if true;
-      allow write: if request.auth != null;
+      allow read: if isValidDate();
+      allow write: if isAdmin();
     }
     match /supplyNetwork/{docId} {
-      allow read: if true;
-      allow write: if request.auth != null;
+      allow read: if isValidDate();
+      allow write: if isAdmin();
     }
     match /supply_network/{docId} {
-      allow read: if true;
-      allow write: if request.auth != null;
+      allow read: if isValidDate();
+      allow write: if isAdmin();
     }
 
     // ── Settings & Configuration ───────────────────────────────────────────
     match /settings/{docId} {
-      allow read: if true;
-      allow write: if request.auth != null;
+      allow read: if isValidDate();
+      allow write: if isAdmin();
     }
     match /systemSettings/{docId} {
-      allow read: if true;
-      allow write: if request.auth != null;
+      allow read: if isValidDate();
+      // Allow admin full write; allow authenticated customers to increment receiptCounter on order receipt generation
+      allow write: if isAdmin() || (isAuthenticated() && docId == 'receiptCounter');
     }
     match /paymentConfig/{docId} {
-      allow read: if true;
-      allow write: if request.auth != null;
+      allow read: if isValidDate();
+      allow write: if isAdmin();
     }
-    // ── Actual collections used by PaymentConfigService ──────────────────────
     match /paymentConfiguration/{docId} {
-      allow read: if true;
-      allow write: if request.auth != null;
+      allow read: if isValidDate();
+      allow write: if isAdmin();
     }
     match /paymentInstructions/{docId} {
-      allow read: if true;
-      allow write: if request.auth != null;
+      allow read: if isValidDate();
+      allow write: if isAdmin();
     }
     match /paymentValidationSettings/{docId} {
-      allow read: if true;
-      allow write: if request.auth != null;
+      allow read: if isValidDate();
+      allow write: if isAdmin();
     }
     match /developerSettings/{docId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null;
+      allow read, write: if isAdmin();
     }
     match /websiteSettings/{docId} {
-      allow read: if true;
-      allow write: if request.auth != null;
+      allow read: if isValidDate();
+      allow write: if isAdmin();
     }
     match /adminSettings/{docId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null;
+      allow read, write: if isAdmin();
     }
 
     // ── Orders ─────────────────────────────────────────────────────────────
     match /orders/{orderId} {
-      // Admins can read/write all orders
+      // Admins have full access to all orders
       allow read, write: if isAdmin();
+
       // Customers can read their own orders
-      allow read: if request.auth != null && resource.data.customerId == request.auth.uid;
-      // Customers can create orders (write their own data)
-      allow create: if true; // Allow checkout (both guest and authenticated customers)
-      // Customers can update their own orders (e.g. payment proof update)
-      allow update: if request.auth != null && resource.data.customerId == request.auth.uid;
+      allow read: if isAuthenticated() && resource.data.customerId == request.auth.uid;
+
+      // Both guest and authenticated customers can create orders during checkout
+      allow create: if isValidDate();
+
+      // Customers can only update non-sensitive fields on their own order (e.g., receiptUrl, receiptNumber, payment screenshot)
+      // Customers CANNOT modify orderStatus, paymentStatus, grandTotal, items, subtotal, pricing, or customerId
+      allow update: if isAuthenticated() &&
+                    resource.data.customerId == request.auth.uid &&
+                    !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+                      'orderStatus', 'paymentStatus', 'grandTotal', 'items', 'subtotal', 'pricing', 'customerId'
+                    ]);
     }
 
-    // ── Payment Verifications ──────────────────────────────────────────────
-    match /paymentVerifications/{docId} {
-      allow read: if request.auth != null && (resource.data.customerId == request.auth.uid || isAdmin());
-      allow create: if true; // customers submit payment proofs
+    // ── Payment Verifications (Proof Submissions) ───────────────────────────
+    match /paymentVerification/{docId} {
+      allow read: if isAdmin() || (isAuthenticated() && resource.data.customerId == request.auth.uid);
+      allow create: if isValidDate();
       allow update, delete: if isAdmin();
     }
+    match /paymentVerifications/{docId} {
+      allow read: if isAdmin() || (isAuthenticated() && resource.data.customerId == request.auth.uid);
+      allow create: if isValidDate();
+      allow update, delete: if isAdmin();
+    }
+    match /paymentAudit/{docId} {
+      allow create: if isValidDate();
+      allow read, update, delete: if isAdmin();
+    }
 
-    // ── Customers ──────────────────────────────────────────────────────────
+    // ── Customers Profiles, Addresses & Cart ────────────────────────────────
     match /customers/{uid} {
-      // Owner or admin can read
-      allow read: if request.auth != null && (request.auth.uid == uid || isAdmin());
-      // Owner can create their profile (right after sign-up, uid must match)
-      allow create: if request.auth != null && request.auth.uid == uid;
-      // Owner or admin can update
-      allow update: if request.auth != null && (request.auth.uid == uid || isAdmin());
-      // Only admin can delete a customer profile
+      allow read: if isAdmin() || isOwner(uid);
+      allow create: if isOwner(uid);
+      allow update: if isAdmin() || isOwner(uid);
       allow delete: if isAdmin();
+
       match /addresses/{addrId} {
-        allow read, write: if request.auth != null && (request.auth.uid == uid || isAdmin());
+        allow read, write: if isAdmin() || isOwner(uid);
+      }
+      match /cart/{cartId} {
+        allow read, write: if isAdmin() || isOwner(uid);
       }
     }
 
-    // ── Admin Users ────────────────────────────────────────────────────────
+    // ── Admin Users & Access Control ───────────────────────────────────────
     match /adminUsers/{docId} {
-      allow read: if isAdmin();
-      allow write: if isAdmin();
+      allow read, write: if isAdmin();
     }
 
-    // ── Backup & Recovery ─────────────────────────────────────────────────
+    // ── Backup & Recovery ──────────────────────────────────────────────────
     match /backups/{docId} {
       allow read, write: if isAdmin();
     }
 
-    // ── Order Sub-Collections ───────────────────────────────────────────────
+    // ── Order Sub-Collections & Audits ─────────────────────────────────────
     match /orderAudit/{docId} {
-      allow read, write: if isAdmin();
+      allow create: if isValidDate();
+      allow read, update, delete: if isAdmin();
+    }
+    match /adminAudit/{docId} {
+      allow create: if isValidDate() && isAuthenticated();
+      allow read, update, delete: if isAdmin();
     }
     match /dispatchInformation/{docId} {
-      allow read: if request.auth != null;
+      allow read: if isAdmin() || (isAuthenticated() && resource.data.customerId == request.auth.uid);
       allow write: if isAdmin();
     }
     match /refundInformation/{docId} {
-      allow read: if request.auth != null;
+      allow read: if isAdmin() || (isAuthenticated() && resource.data.customerId == request.auth.uid);
       allow write: if isAdmin();
     }
+    match /orderLocks/{orderId} {
+      allow read, write: if isAdmin();
+    }
 
-    // ── Connection Status / System Health ─────────────────────────────────
+    // ── Messaging & WhatsApp Communication ─────────────────────────────────
+    match /messageLogs/{docId} {
+      allow read, write: if isAdmin();
+    }
+    match /orderCommunication/{orderId} {
+      allow read, write: if isAdmin();
+      match /history/{historyId} {
+        allow read, write: if isAdmin();
+      }
+    }
+
+    // ── Diagnostics & System Health ────────────────────────────────────────
     match /connectionStatus/{docId} {
-      allow read, write: if request.auth != null;
+      allow read, write: if isAdmin();
     }
     match /systemHealth/{docId} {
-      allow read, write: if request.auth != null;
+      allow read, write: if isAdmin();
     }
 
   }

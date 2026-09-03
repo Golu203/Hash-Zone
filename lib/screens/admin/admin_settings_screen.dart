@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../models/business_settings.dart';
 import '../../providers/admin_provider.dart';
 import '../../providers/business_provider.dart';
+import '../../services/minimoth_service.dart';
 import '../../widgets/image_cropper_modal.dart';
 
 class AdminSettingsScreen extends StatefulWidget {
@@ -76,6 +77,152 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
     _enableShoppingCart = s.enableShoppingCart;
   }
 
+  List<String> _auth2faPhones = [];
+  bool _isLoading2faPhones = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load2faPhones();
+  }
+
+  Future<void> _load2faPhones() async {
+    setState(() => _isLoading2faPhones = true);
+    final phones = await MinMothService().getAuthorizedPhones();
+    if (mounted) {
+      setState(() {
+        _auth2faPhones = phones;
+        _isLoading2faPhones = false;
+      });
+    }
+  }
+
+  Future<void> _showAdd2faPhoneDialog() async {
+    final controller = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    final added = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(
+          'Add Authorized 2FA Number',
+          style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 16),
+        ),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Enter phone number for Admin Portal 2FA authentication (WhatsApp / SMS OTP):',
+                style: GoogleFonts.inter(fontSize: 12, color: Colors.black87),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: controller,
+                keyboardType: TextInputType.phone,
+                style: GoogleFonts.inter(fontSize: 13, color: Colors.black),
+                decoration: const InputDecoration(
+                  labelText: 'Phone Number',
+                  hintText: '+91 9884875578 or 9884875578',
+                  prefixIcon: Icon(Icons.phone_android),
+                ),
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) return 'Phone number is required';
+                  final digits = v.replaceAll(RegExp(r'[^\d]'), '');
+                  if (digits.length < 10) return 'Enter a valid 10-digit phone number';
+                  return null;
+                },
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.black,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () async {
+              if (formKey.currentState?.validate() ?? false) {
+                try {
+                  await MinMothService().addAuthorizedPhone(controller.text.trim());
+                  if (ctx.mounted) Navigator.pop(ctx, true);
+                } catch (e) {
+                  if (ctx.mounted) {
+                    ScaffoldMessenger.of(ctx).showSnackBar(
+                      SnackBar(content: Text('Error: $e')),
+                    );
+                  }
+                }
+              }
+            },
+            child: const Text('Add Number'),
+          ),
+        ],
+      ),
+    );
+
+    if (added == true) {
+      await _load2faPhones();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Authorized 2FA phone number added successfully.')),
+        );
+      }
+    }
+  }
+
+  Future<void> _remove2faPhone(String phone) async {
+    if (_auth2faPhones.length <= 1) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('At least one authorized 2FA number is required.')),
+      );
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Remove 2FA Number'),
+        content: Text(
+          'Are you sure you want to remove ${MinMothService.maskPhoneNumber(phone)} from authorized 2FA numbers?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        await MinMothService().removeAuthorizedPhone(phone);
+        await _load2faPhones();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('2FA number removed successfully.')),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+        }
+      }
+    }
+  }
+
   @override
   void dispose() {
     _whatsAppController.dispose();
@@ -113,6 +260,7 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
     if (result != null && result.files.isNotEmpty && result.files.first.bytes != null) {
       final file = result.files.first;
 
+      if (!mounted) return;
       final croppedBytes = await HZImageCropperModal.cropImage(
         context,
         imageBytes: file.bytes!,
@@ -571,6 +719,90 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
                     style: GoogleFonts.inter(color: Colors.black),
                     decoration: const InputDecoration(labelText: 'Header Announcement Banner Text'),
                   ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 32),
+
+            // 7. ADMIN 2FA AUTHENTICATION (MINIMOTH)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  '7. ADMIN 2FA AUTHENTICATION (MINIMOTH)',
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.5,
+                    color: const Color(0xFF000000),
+                  ),
+                ),
+                TextButton.icon(
+                  onPressed: _showAdd2faPhoneDialog,
+                  icon: const Icon(Icons.add_circle_outline, size: 16, color: Color(0xFF0066CC)),
+                  label: Text(
+                    'Add 2FA Number',
+                    style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: const Color(0xFF0066CC)),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFF000000), width: 2.0),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Authorized Admin Phone Numbers',
+                    style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.black),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'These phone numbers receive WhatsApp / SMS security verification codes for Admin Portal sign in. Numbers are masked for security.',
+                    style: GoogleFonts.inter(fontSize: 11, color: Colors.black54),
+                  ),
+                  const SizedBox(height: 16),
+                  if (_isLoading2faPhones)
+                    const Center(child: Padding(padding: EdgeInsets.all(16), child: CircularProgressIndicator()))
+                  else if (_auth2faPhones.isEmpty)
+                    Text('No phone numbers configured.', style: GoogleFonts.inter(fontSize: 12, color: Colors.black54))
+                  else
+                    ListView.separated(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: _auth2faPhones.length,
+                      separatorBuilder: (_, __) => const Divider(height: 1),
+                      itemBuilder: (context, index) {
+                        final phone = _auth2faPhones[index];
+                        return ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: const CircleAvatar(
+                            backgroundColor: Color(0xFFF0F4F8),
+                            child: Icon(Icons.security, color: Color(0xFF0066CC), size: 20),
+                          ),
+                          title: Text(
+                            MinMothService.maskPhoneNumber(phone),
+                            style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.black),
+                          ),
+                          subtitle: Text(
+                            'Authorized 2FA Target',
+                            style: GoogleFonts.inter(fontSize: 11, color: Colors.green.shade700),
+                          ),
+                          trailing: IconButton(
+                            icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
+                            tooltip: 'Remove 2FA Number',
+                            onPressed: () => _remove2faPhone(phone),
+                          ),
+                        );
+                      },
+                    ),
                 ],
               ),
             ),

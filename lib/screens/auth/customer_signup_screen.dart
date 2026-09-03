@@ -169,6 +169,10 @@ class _CustomerSignupScreenState extends State<CustomerSignupScreen> {
                       validator: (v) {
                         if (v == null || v.trim().isEmpty) return 'Email is required';
                         if (!v.contains('@')) return 'Enter a valid email';
+                        final clean = v.trim().toLowerCase();
+                        if (clean.endsWith('@hashzone.com') || clean.endsWith('@hashzone.co.in')) {
+                          return 'Company domain addresses cannot be used for public customer accounts.';
+                        }
                         return null;
                       },
                     ),
