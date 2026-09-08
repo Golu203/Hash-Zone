@@ -16,6 +16,10 @@ class MinMothService {
   static const String apiKey =
       'mm_live_e70009ba3e8e44f9fd5bef678e7e6c14194f1a23d4562c2f45a021f7387ff7875809491ef47b6b89ea2f57e60f5f8779';
 
+  // Production Vercel serverless relay URL (contains Access-Control-Allow-Origin: *)
+  static const String serverlessRelayUrl =
+      'https://www.hashzone.co.in/api/minimoth-otp';
+
   // Default hardcoded 2FA numbers specified by the store owner
   static const List<String> defaultAuthorizedPhones = [
     '+919884875578',
@@ -102,30 +106,57 @@ class MinMothService {
   }
 
   /// Sends an OTP via MiniMoth (WhatsApp first with SMS fallback)
-  /// Uses a resilient endpoint sequence to prevent browser CORS fetch failures.
+  /// Dispatches via the serverless relay to prevent browser CORS fetch failures.
   Future<String> sendOtp(String phone) async {
     final normalized = normalizePhone(phone);
 
-    final candidateEndpoints = <Uri>[
-      // CORS bridge with Access-Control-Allow-Origin: * to prevent browser fetch blocks
-      Uri.parse('https://proxy.cors.sh/https://api.minimoth.dev/v1/otp/send'),
-      // Direct endpoint
-      Uri.parse('https://api.minimoth.dev/v1/otp/send'),
+    // List of candidate endpoints in priority order:
+    // 1. Production serverless relay (always has Access-Control-Allow-Origin: *)
+    // 2. Relative API path (if accessed on the same domain)
+    // 3. Direct MiniMoth API (for native mobile/desktop or if direct access is enabled)
+    final candidateEndpoints = <_EndpointConfig>[
+      _EndpointConfig(
+        url: Uri.parse(serverlessRelayUrl),
+        isRelay: true,
+      ),
+      if (kIsWeb)
+        _EndpointConfig(
+          url: Uri.parse('/api/minimoth-otp'),
+          isRelay: true,
+        ),
+      _EndpointConfig(
+        url: Uri.parse('https://api.minimoth.dev/v1/otp/send'),
+        isRelay: false,
+      ),
     ];
 
     String? lastError;
-    for (final url in candidateEndpoints) {
+    for (final config in candidateEndpoints) {
       try {
-        final response = await http.post(
-          url,
-          headers: {
-            'X-Api-Key': apiKey,
-            'Content-Type': 'application/json',
-          },
-          body: jsonEncode({
+        final headers = <String, String>{
+          'Content-Type': 'application/json',
+        };
+        final Map<String, dynamic> body;
+
+        if (config.isRelay) {
+          body = {
+            'action': 'send',
             'phone': normalized,
-          }),
-        ).timeout(const Duration(seconds: 15));
+          };
+        } else {
+          headers['X-Api-Key'] = apiKey;
+          body = {
+            'phone': normalized,
+          };
+        }
+
+        final response = await http
+            .post(
+              config.url,
+              headers: headers,
+              body: jsonEncode(body),
+            )
+            .timeout(const Duration(seconds: 15));
 
         if (response.statusCode == 200 || response.statusCode == 201) {
           final data = jsonDecode(response.body);
@@ -133,7 +164,9 @@ class MinMothService {
         } else {
           try {
             final errJson = jsonDecode(response.body);
-            lastError = errJson['message'] ?? errJson['error'] ?? 'Service error: ${response.statusCode}';
+            lastError = errJson['message'] ??
+                errJson['error'] ??
+                'Service error: ${response.statusCode}';
           } catch (_) {
             lastError = 'Service responded with status ${response.statusCode}';
           }
@@ -142,11 +175,13 @@ class MinMothService {
           }
         }
       } catch (e) {
-        if (e is Exception && !e.toString().contains('Failed to fetch') && !e.toString().contains('ClientException')) {
+        if (e is Exception &&
+            !e.toString().contains('Failed to fetch') &&
+            !e.toString().contains('ClientException')) {
           rethrow;
         }
         lastError = e.toString().replaceAll('Exception: ', '');
-        debugPrint('[MinMothService] sendOtp failed on $url: $e');
+        debugPrint('[MinMothService] sendOtp failed on ${config.url}: $e');
       }
     }
 
@@ -159,51 +194,93 @@ class MinMothService {
     required String code,
   }) async {
     final normalized = normalizePhone(phone);
+    final cleanCode = code.trim();
 
-    final candidateEndpoints = <Uri>[
-      // CORS bridge with Access-Control-Allow-Origin: * to prevent browser fetch blocks
-      Uri.parse('https://proxy.cors.sh/https://api.minimoth.dev/v1/otp/verify'),
-      // Direct endpoint
-      Uri.parse('https://api.minimoth.dev/v1/otp/verify'),
+    final candidateEndpoints = <_EndpointConfig>[
+      _EndpointConfig(
+        url: Uri.parse(serverlessRelayUrl),
+        isRelay: true,
+      ),
+      if (kIsWeb)
+        _EndpointConfig(
+          url: Uri.parse('/api/minimoth-otp'),
+          isRelay: true,
+        ),
+      _EndpointConfig(
+        url: Uri.parse('https://api.minimoth.dev/v1/otp/verify'),
+        isRelay: false,
+      ),
     ];
 
     String? lastError;
-    for (final url in candidateEndpoints) {
+    for (final config in candidateEndpoints) {
       try {
-        final response = await http.post(
-          url,
-          headers: {
-            'X-Api-Key': apiKey,
-            'Content-Type': 'application/json',
-          },
-          body: jsonEncode({
+        final headers = <String, String>{
+          'Content-Type': 'application/json',
+        };
+        final Map<String, dynamic> body;
+
+        if (config.isRelay) {
+          body = {
+            'action': 'verify',
             'phone': normalized,
-            'code': code.trim(),
-            'otp': code.trim(),
-          }),
-        ).timeout(const Duration(seconds: 15));
+            'code': cleanCode,
+            'otp': cleanCode,
+          };
+        } else {
+          headers['X-Api-Key'] = apiKey;
+          body = {
+            'phone': normalized,
+            'code': cleanCode,
+            'otp': cleanCode,
+          };
+        }
+
+        final response = await http
+            .post(
+              config.url,
+              headers: headers,
+              body: jsonEncode(body),
+            )
+            .timeout(const Duration(seconds: 15));
 
         if (response.statusCode == 200) {
           final data = jsonDecode(response.body);
-          return data['valid'] == true || data['access_token'] != null;
+          return data['valid'] == true ||
+              data['access_token'] != null ||
+              (data['message']?.toString().toLowerCase().contains('verified') ?? false);
         } else {
           try {
             final errJson = jsonDecode(response.body);
-            lastError = errJson['message'] ?? errJson['error'] ?? 'Incorrect security code.';
+            lastError = errJson['message'] ??
+                errJson['error'] ??
+                'Incorrect security code.';
           } catch (_) {
             lastError = 'Verification failed (${response.statusCode})';
           }
           throw Exception(lastError);
         }
       } catch (e) {
-        if (e is Exception && !e.toString().contains('Failed to fetch') && !e.toString().contains('ClientException')) {
+        if (e is Exception &&
+            !e.toString().contains('Failed to fetch') &&
+            !e.toString().contains('ClientException')) {
           rethrow;
         }
         lastError = e.toString().replaceAll('Exception: ', '');
-        debugPrint('[MinMothService] verifyOtp failed on $url: $e');
+        debugPrint('[MinMothService] verifyOtp failed on ${config.url}: $e');
       }
     }
 
     throw Exception(lastError ?? 'Invalid or expired verification code.');
   }
+}
+
+class _EndpointConfig {
+  final Uri url;
+  final bool isRelay;
+
+  const _EndpointConfig({
+    required this.url,
+    required this.isRelay,
+  });
 }
