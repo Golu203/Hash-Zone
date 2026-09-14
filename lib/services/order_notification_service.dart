@@ -96,6 +96,23 @@ class OrderNotificationService {
       (sum, item) => sum + (item.bundleQuantity ?? item.quantity),
     );
 
+    // 3.5. Build structured items array with image URLs and line calculations
+    final itemsList = order.items.map((item) {
+      final qty = item.bundleQuantity ?? item.quantity;
+      final price = item.bundlePrice ?? item.unitPrice;
+      final total = item.lineTotal > 0 ? item.lineTotal : (price * qty);
+      return {
+        'title': item.title,
+        'imageUrl': item.imageUrl,
+        'sku': item.sku,
+        'size': item.size,
+        'bundleName': item.bundleName ?? '',
+        'quantity': qty,
+        'unitPrice': price,
+        'lineTotal': total,
+      };
+    }).toList();
+
     // 4. Build complete 25-column mapping + flexible JSON keys
     final payload = {
       // Authentication & Config
@@ -103,6 +120,8 @@ class OrderNotificationService {
       'webhookSecret': webhookSecret,
       'adminEmail': adminEmail,
       'senderName': senderDisplayName,
+      'items': itemsList,
+      'itemsJson': jsonEncode(itemsList),
 
       // Exact Google Sheet "Orders" Tab Columns (A through Y)
       'Timestamp': timestampStr,

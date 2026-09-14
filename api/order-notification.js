@@ -103,7 +103,11 @@ function sendGetToAppsScript(targetUrl, payload) {
     const flatPayload = {};
     for (const [key, value] of Object.entries(payload)) {
       if (key === 'row' || value === null || value === undefined) continue;
-      flatPayload[key] = String(value);
+      if (typeof value === 'object') {
+        flatPayload[key] = JSON.stringify(value);
+      } else {
+        flatPayload[key] = String(value);
+      }
     }
 
     const qs = querystring.stringify(flatPayload);
