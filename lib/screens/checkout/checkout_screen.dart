@@ -13,6 +13,7 @@ import '../../services/ocr_service.dart';
 import '../../services/cloudinary_service.dart';
 import '../../services/order_service.dart';
 import '../../services/payment_verification_service.dart';
+import '../../services/order_notification_service.dart';
 import '../../models/order_model.dart';
 import '../../models/payment_verification.dart';
 import '../../widgets/navbar.dart';
@@ -214,6 +215,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       }
 
       // ── STEP 3: Read providers ───────────────────────────────────────────
+      if (!mounted) return;
       final cart = Provider.of<CartProvider>(context, listen: false);
       final auth = Provider.of<CustomerAuthProvider>(context, listen: false);
       final addrProvider = Provider.of<AddressProvider>(context, listen: false);
@@ -347,6 +349,14 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       } catch (pvErr) {
         // Non-fatal — order already created. Log and continue.
         debugPrint('[Checkout] PaymentVerification write failed (non-fatal): $pvErr');
+      }
+
+      // ── STEP 5.5: Dispatch Admin Order Notification (Google Sheets & Email) ───
+      // Non-fatal, isolated, asynchronous. Failures never impact customer success.
+      try {
+        OrderNotificationService().notifyNewOrder(newOrder);
+      } catch (notifErr) {
+        debugPrint('[Checkout] Admin order notification dispatch error (non-fatal): $notifErr');
       }
 
       // ── STEP 6: Clear cart ───────────────────────────────────────────────
