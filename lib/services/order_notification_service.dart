@@ -195,34 +195,48 @@ class OrderNotificationService {
     final bodyJson = jsonEncode(payload);
 
     // Endpoints in priority order:
-    // 1. Serverless relay (keeps secret on server in production)
-    // 2. Relative serverless path if on same domain
-    // 3. Direct Apps Script Web App
+    // 1. Relative serverless path (same domain, avoids CORS — best for production)
+    // 2. Absolute serverless relay URL (fallback)
+    // Note: Direct Apps Script URL is NOT included because it ALWAYS fails
+    //       from browser due to CORS. The Vercel relay handles this server-side.
     final endpoints = <Uri>[
-      Uri.parse(serverlessRelayUrl),
       if (kIsWeb) Uri.parse('/api/order-notification'),
-      Uri.parse(appsScriptUrl),
+      Uri.parse(serverlessRelayUrl),
     ];
 
     for (final uri in endpoints) {
       try {
+        debugPrint('[OrderNotificationService] Attempting notification for order ${order.id} via $uri');
         final response = await http
             .post(
               uri,
               headers: {'Content-Type': 'application/json'},
               body: bodyJson,
             )
-            .timeout(const Duration(seconds: 15));
+            .timeout(const Duration(seconds: 30));
 
-        if (response.statusCode >= 200 && response.statusCode < 400) {
-          debugPrint('[OrderNotificationService] Successfully sent notification for order ${order.id} via $uri');
+        debugPrint('[OrderNotificationService] Response from $uri: status=${response.statusCode}, body=${response.body.length > 200 ? response.body.substring(0, 200) : response.body}');
+
+        if (response.statusCode >= 200 && response.statusCode < 300) {
+          // Also check body for success flag from our relay
+          final responseBody = response.body;
+          if (responseBody.contains('"success":true') || responseBody.contains('"status":"ok"')) {
+            debugPrint('[OrderNotificationService] ✅ Successfully sent notification for order ${order.id} via $uri');
+            return;
+          } else if (responseBody.contains('"success":false')) {
+            debugPrint('[OrderNotificationService] ⚠️ Relay returned success:false for order ${order.id} via $uri. Trying next endpoint...');
+            continue;
+          }
+          // If we can't determine success/failure from body, treat 200 as success
+          debugPrint('[OrderNotificationService] ✅ Notification sent for order ${order.id} via $uri (status 200)');
           return;
         } else {
-          debugPrint('[OrderNotificationService] Endpoint $uri returned status ${response.statusCode}');
+          debugPrint('[OrderNotificationService] ❌ Endpoint $uri returned status ${response.statusCode}');
         }
       } catch (e) {
-        debugPrint('[OrderNotificationService] Endpoint $uri failed: $e');
+        debugPrint('[OrderNotificationService] ❌ Endpoint $uri failed: $e');
       }
     }
+    debugPrint('[OrderNotificationService] ⚠️ All endpoints failed for order ${order.id}');
   }
 }
