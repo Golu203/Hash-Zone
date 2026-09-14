@@ -2,7 +2,7 @@ const https = require('https');
 const querystring = require('querystring');
 
 const WEBHOOK_SECRET = process.env.APPS_SCRIPT_WEBHOOK_SECRET || 'HZ_orders_2026_ajay9884875578';
-const APPS_SCRIPT_URL = process.env.APPS_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbz3bHV60Hjor60vqFmALtzk5vfB2F40KhKR3_jlqzMeIIC9kNYH-btv54qCNVkubKns/exec';
+const APPS_SCRIPT_URL = process.env.APPS_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbwoqe18qKrkAayYKdktqM6NhmVVJ2fBWY-2cTVfHRoxwFqHjKciai9bCWRnMYKWiT5U/exec';
 
 /**
  * Follows an HTTP(S) GET request, handling redirects manually.

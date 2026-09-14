@@ -20,7 +20,7 @@ class OrderNotificationService {
 
   // Direct Google Apps Script Web App URL
   static const String appsScriptUrl =
-      'https://script.google.com/macros/s/AKfycbz3bHV60Hjor60vqFmALtzk5vfB2F40KhKR3_jlqzMeIIC9kNYH-btv54qCNVkubKns/exec';
+      'https://script.google.com/macros/s/AKfycbwoqe18qKrkAayYKdktqM6NhmVVJ2fBWY-2cTVfHRoxwFqHjKciai9bCWRnMYKWiT5U/exec';
 
   // Serverless relay endpoint
   static const String serverlessRelayUrl =
